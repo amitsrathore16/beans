@@ -114,3 +114,17 @@ export async function createLog(payload: LogCreatePayload): Promise<LogSaveRespo
     body: JSON.stringify(payload),
   })
 }
+
+export type DuplicateMode = 'exact' | 'log_with_changes'
+
+export interface DuplicateResponse {
+  new_log_id: string
+  mode: DuplicateMode
+}
+
+export async function duplicateLog(id: string, mode: DuplicateMode): Promise<DuplicateResponse> {
+  return apiFetch<DuplicateResponse>(`/logs/${id}/duplicate`, {
+    method: 'POST',
+    body: JSON.stringify({ mode }),
+  })
+}

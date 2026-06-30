@@ -7,25 +7,38 @@ const BREW_METHODS = ['Espresso', 'V60', 'AeroPress', 'Filter', 'Cold Brew', 'Ca
 const WOULD_RETURN = ['Yes', 'Maybe', 'No'] as const
 const FLAVOUR_OPTIONS = ['Chocolate', 'Nutty', 'Caramel', 'Fruity', 'Floral', 'Citrus', 'Berry', 'Spice', 'Earthy', 'Smoky', 'Vanilla']
 
+export interface LogPrefill {
+  coffee_name?: string
+  roaster?: string
+  roast_level?: string
+  brew_method?: string
+  dose_g?: number
+  yield_g?: number
+  brew_time_s?: number
+  grind_size?: string
+  water_temp_c?: number
+}
+
 interface Props {
   onClose: () => void
   onSaved: (logId: string, match: InventoryMatch | null) => void
+  prefill?: LogPrefill
 }
 
-export function NewLogForm({ onClose, onSaved }: Props) {
+export function NewLogForm({ onClose, onSaved, prefill }: Props) {
   const [logType, setLogType] = useState<'home' | 'cafe'>('home')
-  const [coffeeName, setCoffeeName] = useState('')
-  const [roaster, setRoaster] = useState('')
-  const [roastLevel, setRoastLevel] = useState('')
-  const [brewMethod, setBrewMethod] = useState('')
+  const [coffeeName, setCoffeeName] = useState(prefill?.coffee_name ?? '')
+  const [roaster, setRoaster] = useState(prefill?.roaster ?? '')
+  const [roastLevel, setRoastLevel] = useState(prefill?.roast_level ?? '')
+  const [brewMethod, setBrewMethod] = useState(prefill?.brew_method ?? '')
   const [rating, setRating] = useState<number | ''>('')
   const [notes, setNotes] = useState('')
   const [flavourTags, setFlavourTags] = useState<string[]>([])
   // Home-only
-  const [doseG, setDoseG] = useState('')
-  const [yieldG, setYieldG] = useState('')
-  const [brewTimeS, setBrewTimeS] = useState('')
-  const [grindSize, setGrindSize] = useState('')
+  const [doseG, setDoseG] = useState(prefill?.dose_g?.toString() ?? '')
+  const [yieldG, setYieldG] = useState(prefill?.yield_g?.toString() ?? '')
+  const [brewTimeS, setBrewTimeS] = useState(prefill?.brew_time_s?.toString() ?? '')
+  const [grindSize, setGrindSize] = useState(prefill?.grind_size ?? '')
   // Café-only
   const [cafeName, setCafeName] = useState('')
   const [location, setLocation] = useState('')
