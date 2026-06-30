@@ -2,12 +2,17 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useHomeLogs, useCafeLogs, useSoftDeleteLog } from '../hooks/useLogs'
 import type { InventoryMatch } from '../hooks/useLogs'
+import { useBeans, useSoftDeleteBean } from '../hooks/useBeans'
+import { useBeansRealtime } from '../hooks/useBeansRealtime'
+import type { Bean } from '../hooks/useBeans'
 import { LogCard } from '../components/LogCard'
+import { BeanCard } from '../components/BeanCard'
 import { NewLogForm } from '../components/NewLogForm'
+import { NewBeanForm } from '../components/NewBeanForm'
 import { InventoryMatchModal } from '../components/InventoryMatchModal'
 import { apiFetch } from '../lib/apiClient'
 
-type Tab = 'home' | 'cafe'
+type Tab = 'home' | 'cafe' | 'beans'
 
 export function Home() {
   const { user, signOut } = useAuth()
@@ -17,18 +22,17 @@ export function Home() {
 
   const { logs: homeLogs, loading: homeLoading, refetch: refetchHome } = useHomeLogs()
   const { logs: cafeLogs, loading: cafeLoading, refetch: refetchCafe } = useCafeLogs()
-  const { softDelete } = useSoftDeleteLog()
+  const { softDelete: softDeleteLog } = useSoftDeleteLog()
 
-  const logs = tab === 'home' ? homeLogs : cafeLogs
-  const loading = tab === 'home' ? homeLoading : cafeLoading
+  const { beans, setBeans, loading: beansLoading, refetch: refetchBeans } = useBeans()
+  const { softDelete: softDeleteBean } = useSoftDeleteBean()
+  useBeansRealtime(user?.id, setBeans)
 
   async function handleLogSaved(logId: string, match: InventoryMatch | null) {
     setShowForm(false)
     refetchHome()
     refetchCafe()
-    if (match) {
-      setPendingMatch({ match, logId })
-    }
+    if (match) setPendingMatch({ match, logId })
   }
 
   async function handleDeductConfirm(beanId: string, logId: string, doseG: number) {
@@ -37,12 +41,29 @@ export function Home() {
       body: JSON.stringify({ bean_id: beanId, log_id: logId, dose_g: doseG }),
     })
     setPendingMatch(null)
+    refetchBeans()
   }
 
-  async function handleDelete(id: string) {
-    await softDelete(id)
+  async function handleDeleteLog(id: string) {
+    await softDeleteLog(id)
     refetchHome()
     refetchCafe()
+  }
+
+  async function handleDeleteBean(id: string) {
+    await softDeleteBean(id)
+    refetchBeans()
+  }
+
+  function handleBeanSaved(bean: Bean) {
+    setShowForm(false)
+    setBeans(prev => [bean, ...prev])
+  }
+
+  const TAB_LABELS: Record<Tab, string> = {
+    home: 'Home brews',
+    cafe: 'Café tastings',
+    beans: 'Beans',
   }
 
   return (
@@ -52,44 +73,68 @@ export function Home() {
         <button onClick={signOut} style={styles.signOut}>Sign out</button>
       </header>
 
-      <nav style={styles.tabs}>
-        {(['home', 'cafe'] as Tab[]).map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            style={{ ...styles.tab, ...(tab === t ? styles.tabActive : {}) }}
-          >
-            {t === 'home' ? 'Home brews' : 'Café tastings'}
-          </button>
-        ))}
-      </nav>
+      <div style={styles.tabsWrapper}>
+        <nav style={styles.tabs}>
+          {(['home', 'cafe', 'beans'] as Tab[]).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              style={{ ...styles.tab, ...(tab === t ? styles.tabActive : {}) }}
+            >
+              {TAB_LABELS[t]}
+            </button>
+          ))}
+        </nav>
+      </div>
 
       <main style={styles.main}>
-        {loading ? (
-          <p style={styles.empty}>Loading…</p>
-        ) : logs.length === 0 ? (
-          <div style={styles.emptyState}>
-            <p style={styles.emptyTitle}>No {tab === 'home' ? 'brew' : 'tasting'} logs yet</p>
-            <p style={styles.emptyHint}>Tap + to add your first entry</p>
-          </div>
+        {tab === 'beans' ? (
+          beansLoading ? (
+            <p style={styles.empty}>Loading…</p>
+          ) : beans.length === 0 ? (
+            <div style={styles.emptyState}>
+              <p style={styles.emptyTitle}>No beans yet</p>
+              <p style={styles.emptyHint}>Tap + to add a bag to your inventory</p>
+            </div>
+          ) : (
+            <div style={styles.list}>
+              {beans.map(bean => (
+                <BeanCard key={bean.id} bean={bean} onDelete={handleDeleteBean} />
+              ))}
+            </div>
+          )
         ) : (
-          <div style={styles.list}>
-            {logs.map(log => (
-              <LogCard key={log.id} log={log} onDelete={handleDelete} />
-            ))}
-          </div>
+          (() => {
+            const logs = tab === 'home' ? homeLogs : cafeLogs
+            const loading = tab === 'home' ? homeLoading : cafeLoading
+            return loading ? (
+              <p style={styles.empty}>Loading…</p>
+            ) : logs.length === 0 ? (
+              <div style={styles.emptyState}>
+                <p style={styles.emptyTitle}>No {tab === 'home' ? 'brew' : 'tasting'} logs yet</p>
+                <p style={styles.emptyHint}>Tap + to add your first entry</p>
+              </div>
+            ) : (
+              <div style={styles.list}>
+                {logs.map(log => (
+                  <LogCard key={log.id} log={log} onDelete={handleDeleteLog} />
+                ))}
+              </div>
+            )
+          })()
         )}
       </main>
 
-      <button onClick={() => setShowForm(true)} style={styles.fab} aria-label="Add log">
+      <button onClick={() => setShowForm(true)} style={styles.fab} aria-label={tab === 'beans' ? 'Add bean' : 'Add log'}>
         +
       </button>
 
-      {showForm && (
-        <NewLogForm
-          onClose={() => setShowForm(false)}
-          onSaved={handleLogSaved}
-        />
+      {showForm && tab === 'beans' && (
+        <NewBeanForm onClose={() => setShowForm(false)} onSaved={handleBeanSaved} />
+      )}
+
+      {showForm && tab !== 'beans' && (
+        <NewLogForm onClose={() => setShowForm(false)} onSaved={handleLogSaved} />
       )}
 
       {pendingMatch && (
@@ -119,16 +164,31 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 'var(--radius-md)', padding: 'var(--space-2) var(--space-4)',
     color: 'var(--color-muted)', fontSize: '0.8rem',
   },
-  tabs: {
-    display: 'flex', background: '#fff',
+  tabsWrapper: {
+    background: '#fff',
     borderBottom: '1px solid var(--color-border)',
+    padding: 'var(--space-3) var(--space-4)',
+  },
+  tabs: {
+    display: 'flex',
+    background: 'var(--color-foam)',
+    borderRadius: '99px',
+    padding: '3px',
+    gap: '2px',
   },
   tab: {
-    flex: 1, padding: 'var(--space-3)', border: 'none', background: 'none',
-    color: 'var(--color-muted)', fontWeight: 500, fontSize: '0.9rem',
-    borderBottom: '2px solid transparent',
+    flex: 1, padding: 'var(--space-2) var(--space-3)', border: 'none',
+    background: 'transparent',
+    color: 'var(--color-muted)', fontWeight: 500, fontSize: '0.85rem',
+    borderRadius: '99px',
+    position: 'relative' as const,
   },
-  tabActive: { color: 'var(--color-caramel)', borderBottomColor: 'var(--color-caramel)' },
+  tabActive: {
+    color: 'var(--color-espresso)',
+    background: '#fff',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+    fontWeight: 600,
+  },
   main: { padding: 'var(--space-4)' },
   list: { display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' },
   empty: { textAlign: 'center', color: 'var(--color-muted)', padding: 'var(--space-8)' },
