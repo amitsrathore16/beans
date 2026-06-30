@@ -1,13 +1,29 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
+import { ProtectedRoute } from './components/ProtectedRoute'
+import { Login } from './pages/Login'
+import { Register } from './pages/Register'
+import { Home } from './pages/Home'
+
 function App() {
   return (
-    <main style={{ padding: 'var(--space-8)', textAlign: 'center' }}>
-      <h1 style={{ fontFamily: 'var(--font-display)', color: 'var(--color-espresso)' }}>
-        Grounded
-      </h1>
-      <p style={{ color: 'var(--color-muted)', marginTop: 'var(--space-4)' }}>
-        Your coffee companion
-      </p>
-    </main>
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Home />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   )
 }
 
