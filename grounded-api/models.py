@@ -1,6 +1,6 @@
 from __future__ import annotations
 from enum import Enum
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -16,26 +16,32 @@ class DuplicateMode(str, Enum):
 
 class LogCreate(BaseModel):
     log_type: LogType
+    # Coffee identity
+    brand: Optional[str] = None
     coffee_name: str
-    roaster: Optional[str] = None
-    roast_level: Optional[str] = None
     origin: Optional[str] = None
+    roaster: Optional[str] = None
+    varietal: Optional[str] = None
+    roast_level: Optional[str] = None
+    process_method: Optional[str] = None
+    # Equipment
     brew_method: Optional[str] = None
-    body: Optional[str] = None
-    mouthfeel: Optional[str] = None
-    acidity: Optional[str] = None
-    finish: Optional[str] = None
-    flavour_tags: Optional[List[str]] = None
+    equipment: Optional[str] = None
+    # Grind
+    grinder: Optional[str] = None
+    grind_size: Optional[str] = None
+    # Extraction
+    dose_g: Optional[float] = None
+    coffee_water_ratio: Optional[str] = None
+    ideal_yield_g: Optional[float] = None
+    actual_yield_g: Optional[float] = None
+    brew_time_s: Optional[int] = None
+    water_temp_c: Optional[float] = None
+    # Sensory
+    sensory_profile: Optional[Dict[str, Any]] = None
+    # Overall
     rating: Optional[int] = Field(default=None, ge=1, le=5)
     notes: Optional[str] = None
-    # Home-only
-    machine: Optional[str] = None
-    grinder: Optional[str] = None
-    dose_g: Optional[float] = None
-    yield_g: Optional[float] = None
-    brew_time_s: Optional[int] = None
-    grind_size: Optional[str] = None
-    water_temp_c: Optional[float] = None
     duplicated_from: Optional[str] = None
     # Café-only
     cafe_name: Optional[str] = None

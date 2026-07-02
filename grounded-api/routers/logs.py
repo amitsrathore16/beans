@@ -8,7 +8,7 @@ from database import get_supabase
 
 router = APIRouter(prefix="/api/v1/logs", tags=["logs"])
 
-SENSORY_FIELDS = ["body", "mouthfeel", "acidity", "finish", "flavour_tags", "rating", "notes"]
+SENSORY_FIELDS = ["sensory_profile", "rating", "notes"]
 
 
 @router.post("", response_model=LogSaveResponse)

@@ -2,31 +2,46 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { apiFetch } from '../lib/apiClient'
 
+export interface SensoryProfile {
+  aroma?: string[]
+  flavour?: string[]
+  acidity?: string[]
+  body?: string
+  bitterness?: string
+  mouthfeel?: string
+  finish?: string[]
+}
+
 export interface Log {
   id: string
   user_id: string
   log_type: 'home' | 'cafe'
+  // Coffee identity
+  brand?: string
   coffee_name: string
-  roaster?: string
-  roast_level?: string
   origin?: string
+  roaster?: string
+  varietal?: string
+  roast_level?: string
+  process_method?: string
+  // Equipment
   brew_method?: string
-  body?: string
-  mouthfeel?: string
-  acidity?: string
-  finish?: string
-  flavour_tags?: string[]
+  equipment?: string
+  // Grind
+  grinder?: string
+  grind_size?: string
+  // Extraction
+  dose_g?: number
+  coffee_water_ratio?: string
+  ideal_yield_g?: number
+  actual_yield_g?: number
+  brew_time_s?: number
+  water_temp_c?: number
+  // Sensory
+  sensory_profile?: SensoryProfile
+  // Overall
   rating?: number
   notes?: string
-  // Home-only
-  machine?: string
-  grinder?: string
-  dose_g?: number
-  yield_g?: number
-  brew_time_s?: number
-  grind_size?: string
-  water_temp_c?: number
-  ratio?: number
   duplicated_from?: string
   // Café-only
   cafe_name?: string
@@ -103,7 +118,7 @@ export function useSoftDeleteLog() {
 }
 
 export interface LogCreatePayload {
-  log: Omit<Log, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'deleted_at' | 'ratio'>
+  log: Omit<Log, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'deleted_at'>
   deduct_inventory: boolean
   confirmed_bean_id?: string | null
 }

@@ -57,18 +57,23 @@ export function Home() {
       await duplicateLog(id, 'exact')
       refetchHome()
     } else {
-      // Find the source log and pre-fill the form with extraction params
       const source = homeLogs.find(l => l.id === id)
       setLogPrefill({
-        coffee_name:  source?.coffee_name,
-        roaster:      source?.roaster,
-        roast_level:  source?.roast_level,
-        brew_method:  source?.brew_method,
-        dose_g:       source?.dose_g,
-        yield_g:      source?.yield_g,
-        brew_time_s:  source?.brew_time_s,
-        grind_size:   source?.grind_size,
-        water_temp_c: source?.water_temp_c,
+        brand:              source?.brand,
+        coffee_name:        source?.coffee_name,
+        origin:             source?.origin,
+        roaster:            source?.roaster,
+        varietal:           source?.varietal,
+        roast_level:        source?.roast_level,
+        process_method:     source?.process_method,
+        brew_method:        source?.brew_method,
+        equipment:          source?.equipment,
+        coffee_water_ratio: source?.coffee_water_ratio,
+        dose_g:             source?.dose_g,
+        actual_yield_g:     source?.actual_yield_g,
+        brew_time_s:        source?.brew_time_s,
+        grind_size:         source?.grind_size,
+        water_temp_c:       source?.water_temp_c,
       })
       setShowForm(true)
     }
@@ -163,7 +168,12 @@ export function Home() {
       )}
 
       {showForm && tab !== 'beans' && (
-        <NewLogForm onClose={handleFormClose} onSaved={handleLogSaved} prefill={logPrefill} />
+        <NewLogForm
+          onClose={handleFormClose}
+          onSaved={handleLogSaved}
+          prefill={logPrefill}
+          existingBrands={[...new Set(homeLogs.map(l => l.brand).filter((b): b is string => !!b))]}
+        />
       )}
 
       {pendingMatch && (

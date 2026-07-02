@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Log, DuplicateMode } from '../hooks/useLogs'
+import { getExtractionStatus } from './NewLogForm'
 
 interface Props {
   log: Log
@@ -11,15 +12,26 @@ export function LogCard({ log, onDelete, onDuplicate }: Props) {
   const isHome = log.log_type === 'home'
   const [showBrewAgain, setShowBrewAgain] = useState(false)
 
+  const extractionStatus = getExtractionStatus(log.actual_yield_g, log.ideal_yield_g)
+
+  const chips: { label: string; value: string }[] = []
+  if (log.dose_g != null)         chips.push({ label: 'Dose',  value: `${log.dose_g}g` })
+  if (log.coffee_water_ratio)     chips.push({ label: 'Ratio', value: log.coffee_water_ratio })
+  if (log.grind_size)             chips.push({ label: 'Grind', value: log.grind_size })
+  if (log.actual_yield_g != null) chips.push({ label: 'Yield', value: `${log.actual_yield_g}g` })
+
   return (
     <div style={styles.card}>
+      {/* Header */}
       <div style={styles.header}>
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <span style={{ ...styles.badge, background: isHome ? '#e8f0d8' : '#f0e8d8' }}>
             {isHome ? 'Home brew' : 'Café'}
           </span>
           <h3 style={styles.name}>{log.coffee_name}</h3>
-          {log.roaster && <p style={styles.roaster}>{log.roaster}</p>}
+          <p style={styles.subheading}>
+            {[log.brand, log.brew_method, log.equipment].filter(Boolean).join(' · ')}
+          </p>
         </div>
         <div style={styles.right}>
           {log.rating && <Stars rating={log.rating} />}
@@ -27,31 +39,31 @@ export function LogCard({ log, onDelete, onDuplicate }: Props) {
         </div>
       </div>
 
-      {isHome && (log.dose_g || log.yield_g || log.brew_time_s) && (
-        <div style={styles.stats}>
-          {log.dose_g    && <Stat label="Dose"  value={`${log.dose_g}g`} />}
-          {log.yield_g   && <Stat label="Yield" value={`${log.yield_g}g`} />}
-          {log.ratio     && <Stat label="Ratio" value={`1:${log.ratio.toFixed(1)}`} />}
-          {log.brew_time_s && <Stat label="Time" value={`${log.brew_time_s}s`} />}
+      {/* Home brew chip row */}
+      {isHome && chips.length > 0 && (
+        <div style={styles.chipRow}>
+          {chips.map(c => (
+            <span key={c.label} style={styles.chip}>
+              <span style={styles.chipLabel}>{c.label}</span>
+              {' '}{c.value}
+            </span>
+          ))}
         </div>
       )}
 
+      {/* Café location */}
       {!isHome && log.cafe_name && (
         <p style={styles.cafeName}>{log.cafe_name}{log.location ? ` · ${log.location}` : ''}</p>
       )}
 
-      {log.flavour_tags && log.flavour_tags.length > 0 && (
-        <div style={styles.tags}>
-          {log.flavour_tags.map(tag => <span key={tag} style={styles.tag}>{tag}</span>)}
-        </div>
-      )}
-
       {log.notes && <p style={styles.notes}>{log.notes}</p>}
 
+      {/* Footer */}
       <div style={styles.footer}>
-        <p style={styles.date}>
-          {new Date(log.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-        </p>
+        <div style={styles.footerLeft}>
+          {extractionStatus && <ExtractionBadge status={extractionStatus} />}
+          <p style={styles.date}>{relativeTime(log.created_at)}</p>
+        </div>
 
         {isHome && onDuplicate && (
           <div style={{ position: 'relative' }}>
@@ -93,13 +105,29 @@ function Stars({ rating }: { rating: number }) {
   )
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function ExtractionBadge({ status }: { status: 'ideal' | 'over' | 'under' }) {
+  const config = {
+    ideal: { label: '● Ideal', color: '#2d7a3a', bg: '#e6f4ea' },
+    over:  { label: '▲ Over', color: '#92400e', bg: '#fef3c7' },
+    under: { label: '▼ Under', color: '#1e3a5f', bg: '#dbeafe' },
+  }[status]
   return (
-    <div style={styles.stat}>
-      <span style={styles.statLabel}>{label}</span>
-      <span style={styles.statValue}>{value}</span>
-    </div>
+    <span style={{ ...styles.extractionBadge, color: config.color, background: config.bg }}>
+      {config.label}
+    </span>
   )
+}
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins  = Math.floor(diff / 60_000)
+  const hours = Math.floor(diff / 3_600_000)
+  const days  = Math.floor(diff / 86_400_000)
+  if (mins < 1)   return 'Just now'
+  if (mins < 60)  return `${mins}m ago`
+  if (hours < 24) return `${hours}h ago`
+  if (days < 7)   return `${days}d ago`
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -116,21 +144,29 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--color-espresso)',
   },
   name: { fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--color-espresso)' },
-  roaster: { fontSize: '0.8rem', color: 'var(--color-muted)', marginTop: '2px' },
-  right: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--space-2)' },
+  subheading: { fontSize: '0.8rem', color: 'var(--color-muted)', marginTop: '2px' },
+  right: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--space-2)', flexShrink: 0 },
   deleteBtn: { background: 'none', border: 'none', color: 'var(--color-muted)', fontSize: '1.2rem', lineHeight: 1, padding: 0 },
-  stats: { display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' },
-  stat: {
-    display: 'flex', flexDirection: 'column', alignItems: 'center',
-    background: 'var(--color-foam)', borderRadius: 'var(--radius-sm)', padding: '4px 10px',
+  chipRow: {
+    display: 'flex', gap: 'var(--space-2)', overflowX: 'auto',
+    paddingBottom: '2px', scrollbarWidth: 'none',
   },
-  statLabel: { fontSize: '0.65rem', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' },
-  statValue: { fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-espresso)' },
+  chip: {
+    flexShrink: 0, fontSize: '0.78rem', padding: '3px 10px',
+    borderRadius: '99px', background: 'var(--color-foam)',
+    color: 'var(--color-espresso)', whiteSpace: 'nowrap',
+  },
+  chipLabel: {
+    fontSize: '0.65rem', color: 'var(--color-muted)',
+    textTransform: 'uppercase', letterSpacing: '0.04em', marginRight: '2px',
+  },
   cafeName: { fontSize: '0.875rem', color: 'var(--color-roast)' },
-  tags: { display: 'flex', gap: 'var(--space-1)', flexWrap: 'wrap' },
-  tag: { fontSize: '0.75rem', padding: '2px 10px', borderRadius: '99px', background: 'var(--color-cream)', color: 'var(--color-roast)' },
   notes: { fontSize: '0.875rem', color: 'var(--color-muted)', fontStyle: 'italic' },
   footer: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--space-1)' },
+  footerLeft: { display: 'flex', alignItems: 'center', gap: 'var(--space-2)' },
+  extractionBadge: {
+    fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: '99px',
+  },
   date: { fontSize: '0.75rem', color: 'var(--color-border)' },
   brewAgainBtn: {
     background: 'none', border: '1px solid var(--color-border)',
