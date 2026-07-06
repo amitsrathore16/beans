@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
+import { migrateFromLocalStorage } from '../utils/migration'
 
 interface AuthContextValue {
   session: Session | null
@@ -24,6 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
+      if (session) migrateFromLocalStorage().catch(() => {})
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {

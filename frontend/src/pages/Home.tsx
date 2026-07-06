@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { useHomeLogs, useCafeLogs, useSoftDeleteLog } from '../hooks/useLogs'
-import type { InventoryMatch } from '../hooks/useLogs'
+import { useHomeLogs, useCafeLogs, useSoftDeleteLog, duplicateLog } from '../hooks/useLogs'
+import type { InventoryMatch, DuplicateMode } from '../hooks/useLogs'
 import { useBeans, useSoftDeleteBean } from '../hooks/useBeans'
 import { useBeansRealtime } from '../hooks/useBeansRealtime'
 import type { Bean } from '../hooks/useBeans'
 import { LogCard } from '../components/LogCard'
 import { BeanCard } from '../components/BeanCard'
 import { NewLogForm } from '../components/NewLogForm'
+import type { LogPrefill } from '../components/NewLogForm'
 import { NewBeanForm } from '../components/NewBeanForm'
 import { InventoryMatchModal } from '../components/InventoryMatchModal'
 import { apiFetch } from '../lib/apiClient'
@@ -18,6 +19,7 @@ export function Home() {
   const { user, signOut } = useAuth()
   const [tab, setTab] = useState<Tab>('home')
   const [showForm, setShowForm] = useState(false)
+  const [logPrefill, setLogPrefill] = useState<LogPrefill | undefined>(undefined)
   const [pendingMatch, setPendingMatch] = useState<{ match: InventoryMatch; logId: string } | null>(null)
 
   const { logs: homeLogs, loading: homeLoading, refetch: refetchHome } = useHomeLogs()
@@ -50,6 +52,33 @@ export function Home() {
     refetchCafe()
   }
 
+  async function handleDuplicate(id: string, mode: DuplicateMode) {
+    if (mode === 'exact') {
+      await duplicateLog(id, 'exact')
+      refetchHome()
+    } else {
+      const source = homeLogs.find(l => l.id === id)
+      setLogPrefill({
+        brand:              source?.brand,
+        coffee_name:        source?.coffee_name,
+        origin:             source?.origin,
+        roaster:            source?.roaster,
+        varietal:           source?.varietal,
+        roast_level:        source?.roast_level,
+        process_method:     source?.process_method,
+        brew_method:        source?.brew_method,
+        equipment:          source?.equipment,
+        coffee_water_ratio: source?.coffee_water_ratio,
+        dose_g:             source?.dose_g,
+        actual_yield_g:     source?.actual_yield_g,
+        brew_time_s:        source?.brew_time_s,
+        grind_size:         source?.grind_size,
+        water_temp_c:       source?.water_temp_c,
+      })
+      setShowForm(true)
+    }
+  }
+
   async function handleDeleteBean(id: string) {
     await softDeleteBean(id)
     refetchBeans()
@@ -58,6 +87,11 @@ export function Home() {
   function handleBeanSaved(bean: Bean) {
     setShowForm(false)
     setBeans(prev => [bean, ...prev])
+  }
+
+  function handleFormClose() {
+    setShowForm(false)
+    setLogPrefill(undefined)
   }
 
   const TAB_LABELS: Record<Tab, string> = {
@@ -117,7 +151,7 @@ export function Home() {
             ) : (
               <div style={styles.list}>
                 {logs.map(log => (
-                  <LogCard key={log.id} log={log} onDelete={handleDeleteLog} />
+                  <LogCard key={log.id} log={log} onDelete={handleDeleteLog} onDuplicate={handleDuplicate} />
                 ))}
               </div>
             )
@@ -130,11 +164,16 @@ export function Home() {
       </button>
 
       {showForm && tab === 'beans' && (
-        <NewBeanForm onClose={() => setShowForm(false)} onSaved={handleBeanSaved} />
+        <NewBeanForm onClose={handleFormClose} onSaved={handleBeanSaved} />
       )}
 
       {showForm && tab !== 'beans' && (
-        <NewLogForm onClose={() => setShowForm(false)} onSaved={handleLogSaved} />
+        <NewLogForm
+          onClose={handleFormClose}
+          onSaved={handleLogSaved}
+          prefill={logPrefill}
+          existingBrands={[...new Set(homeLogs.map(l => l.brand).filter((b): b is string => !!b))]}
+        />
       )}
 
       {pendingMatch && (
