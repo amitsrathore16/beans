@@ -59,13 +59,16 @@ export function Home() {
     } else {
       const source = homeLogs.find(l => l.id === id)
       setLogPrefill({
-        brand:              source?.brand,
-        coffee_name:        source?.coffee_name,
-        origin:             source?.origin,
         roaster:            source?.roaster,
+        coffee_name:        source?.coffee_name,
+        coffee_type:        source?.coffee_type,
+        origin_country:     source?.origin_country,
+        origin_region:      source?.origin_region,
+        species:            source?.species,
+        process_method:     source?.process_method,
         varietal:           source?.varietal,
         roast_level:        source?.roast_level,
-        process_method:     source?.process_method,
+        roast_date:         source?.roast_date,
         brew_method:        source?.brew_method,
         equipment:          source?.equipment,
         coffee_water_ratio: source?.coffee_water_ratio,
@@ -172,7 +175,6 @@ export function Home() {
           onClose={handleFormClose}
           onSaved={handleLogSaved}
           prefill={logPrefill}
-          existingBrands={[...new Set(homeLogs.map(l => l.brand).filter((b): b is string => !!b))]}
         />
       )}
 

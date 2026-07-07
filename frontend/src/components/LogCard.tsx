@@ -14,75 +14,70 @@ export function LogCard({ log, onDelete, onDuplicate }: Props) {
 
   const extractionStatus = getExtractionStatus(log.actual_yield_g, log.ideal_yield_g)
 
-  const chips: { label: string; value: string }[] = []
-  if (log.dose_g != null)         chips.push({ label: 'Dose',  value: `${log.dose_g}g` })
-  if (log.coffee_water_ratio)     chips.push({ label: 'Ratio', value: log.coffee_water_ratio })
-  if (log.grind_size)             chips.push({ label: 'Grind', value: log.grind_size })
-  if (log.actual_yield_g != null) chips.push({ label: 'Yield', value: `${log.actual_yield_g}g` })
-
   return (
-    <div style={styles.card}>
+    <div style={s.card}>
       {/* Header */}
-      <div style={styles.header}>
+      <div style={s.header}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ ...styles.badge, background: isHome ? '#e8f0d8' : '#f0e8d8' }}>
+          <span style={{ ...s.badge, background: isHome ? '#e8f0d8' : '#f0e8d8' }}>
             {isHome ? 'Home brew' : 'Café'}
           </span>
-          <h3 style={styles.name}>{log.coffee_name}</h3>
-          <p style={styles.subheading}>
-            {[log.brand, log.brew_method, log.equipment].filter(Boolean).join(' · ')}
+          <h3 style={s.name}>{log.coffee_name}</h3>
+          <p style={s.subheading}>
+            {[log.roaster, log.brew_method].filter(Boolean).join(' · ')}
           </p>
         </div>
-        <div style={styles.right}>
-          {log.rating && <Stars rating={log.rating} />}
-          <button onClick={() => onDelete(log.id)} style={styles.deleteBtn} aria-label="Delete log">×</button>
+        <div style={s.right}>
+          {log.rating != null && <Stars rating={log.rating} />}
+          <button onClick={() => onDelete(log.id)} style={s.deleteBtn} aria-label="Delete log">×</button>
         </div>
       </div>
 
-      {/* Home brew chip row */}
-      {isHome && chips.length > 0 && (
-        <div style={styles.chipRow}>
-          {chips.map(c => (
-            <span key={c.label} style={styles.chip}>
-              <span style={styles.chipLabel}>{c.label}</span>
-              {' '}{c.value}
-            </span>
-          ))}
+      {/* Row 1 — equipment · grind */}
+      {isHome && (log.equipment || log.grind_size) && (
+        <div style={s.chipRow}>
+          {log.equipment  && <Chip value={log.equipment} />}
+          {log.grind_size && <Chip value={log.grind_size} />}
+        </div>
+      )}
+
+      {/* Row 2 — dose · ratio · yield */}
+      {isHome && (log.dose_g != null || log.coffee_water_ratio || log.actual_yield_g != null) && (
+        <div style={s.chipRow}>
+          {log.dose_g != null        && <Chip value={`${log.dose_g}g dose`} />}
+          {log.coffee_water_ratio    && <Chip value={log.coffee_water_ratio} />}
+          {log.actual_yield_g != null && <Chip value={`${log.actual_yield_g}g yield`} />}
         </div>
       )}
 
       {/* Café location */}
       {!isHome && log.cafe_name && (
-        <p style={styles.cafeName}>{log.cafe_name}{log.location ? ` · ${log.location}` : ''}</p>
+        <p style={s.cafeName}>{log.cafe_name}{log.location ? ` · ${log.location}` : ''}</p>
       )}
 
-      {log.notes && <p style={styles.notes}>{log.notes}</p>}
+      {log.notes && <p style={s.notes}>{log.notes}</p>}
 
       {/* Footer */}
-      <div style={styles.footer}>
-        <div style={styles.footerLeft}>
+      <div style={s.footer}>
+        <div style={s.footerLeft}>
           {extractionStatus && <ExtractionBadge status={extractionStatus} />}
-          <p style={styles.date}>{relativeTime(log.created_at)}</p>
+          <span style={s.date}>{relativeTime(log.created_at)}</span>
         </div>
 
         {isHome && onDuplicate && (
           <div style={{ position: 'relative' }}>
-            <button onClick={() => setShowBrewAgain(p => !p)} style={styles.brewAgainBtn}>
+            <button onClick={() => setShowBrewAgain(p => !p)} style={s.brewAgainBtn}>
               Brew again ↓
             </button>
             {showBrewAgain && (
-              <div style={styles.brewMenu}>
-                <button
-                  style={styles.brewMenuItem}
-                  onClick={() => { setShowBrewAgain(false); onDuplicate(log.id, 'exact') }}
-                >
+              <div style={s.brewMenu}>
+                <button style={s.brewMenuItem}
+                  onClick={() => { setShowBrewAgain(false); onDuplicate(log.id, 'exact') }}>
                   <strong>Exact copy</strong>
                   <span>All settings &amp; notes duplicated</span>
                 </button>
-                <button
-                  style={styles.brewMenuItem}
-                  onClick={() => { setShowBrewAgain(false); onDuplicate(log.id, 'log_with_changes') }}
-                >
+                <button style={s.brewMenuItem}
+                  onClick={() => { setShowBrewAgain(false); onDuplicate(log.id, 'log_with_changes') }}>
                   <strong>Log with changes</strong>
                   <span>Keep extraction, clear tasting notes</span>
                 </button>
@@ -105,15 +100,19 @@ function Stars({ rating }: { rating: number }) {
   )
 }
 
+function Chip({ value }: { value: string }) {
+  return <span style={s.chip}>{value}</span>
+}
+
 function ExtractionBadge({ status }: { status: 'ideal' | 'over' | 'under' }) {
-  const config = {
-    ideal: { label: '● Ideal', color: '#2d7a3a', bg: '#e6f4ea' },
-    over:  { label: '▲ Over', color: '#92400e', bg: '#fef3c7' },
-    under: { label: '▼ Under', color: '#1e3a5f', bg: '#dbeafe' },
+  const cfg = {
+    ideal: { label: '● Ideal', color: '#2E7D32', bg: '#e6f4ea' },
+    over:  { label: '▲ Over',  color: '#C8873A', bg: '#fef3c7' },
+    under: { label: '▼ Under', color: '#1565C0', bg: '#dbeafe' },
   }[status]
   return (
-    <span style={{ ...styles.extractionBadge, color: config.color, background: config.bg }}>
-      {config.label}
+    <span style={{ ...s.extractionBadge, color: cfg.color, background: cfg.bg }}>
+      {cfg.label}
     </span>
   )
 }
@@ -126,11 +125,12 @@ function relativeTime(iso: string): string {
   if (mins < 1)   return 'Just now'
   if (mins < 60)  return `${mins}m ago`
   if (hours < 24) return `${hours}h ago`
-  if (days < 7)   return `${days}d ago`
+  if (days === 1) return '1 day ago'
+  if (days < 30)  return `${days} days ago`
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-const styles: Record<string, React.CSSProperties> = {
+const s: Record<string, React.CSSProperties> = {
   card: {
     background: '#fff', borderRadius: 'var(--radius-md)',
     padding: 'var(--space-4)', boxShadow: 'var(--shadow-sm)',
@@ -149,24 +149,18 @@ const styles: Record<string, React.CSSProperties> = {
   deleteBtn: { background: 'none', border: 'none', color: 'var(--color-muted)', fontSize: '1.2rem', lineHeight: 1, padding: 0 },
   chipRow: {
     display: 'flex', gap: 'var(--space-2)', overflowX: 'auto',
-    paddingBottom: '2px', scrollbarWidth: 'none',
+    paddingBottom: '2px', scrollbarWidth: 'none' as const,
   },
   chip: {
     flexShrink: 0, fontSize: '0.78rem', padding: '3px 10px',
     borderRadius: '99px', background: 'var(--color-foam)',
-    color: 'var(--color-espresso)', whiteSpace: 'nowrap',
-  },
-  chipLabel: {
-    fontSize: '0.65rem', color: 'var(--color-muted)',
-    textTransform: 'uppercase', letterSpacing: '0.04em', marginRight: '2px',
+    color: 'var(--color-espresso)', whiteSpace: 'nowrap' as const,
   },
   cafeName: { fontSize: '0.875rem', color: 'var(--color-roast)' },
   notes: { fontSize: '0.875rem', color: 'var(--color-muted)', fontStyle: 'italic' },
   footer: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--space-1)' },
   footerLeft: { display: 'flex', alignItems: 'center', gap: 'var(--space-2)' },
-  extractionBadge: {
-    fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: '99px',
-  },
+  extractionBadge: { fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: '99px' },
   date: { fontSize: '0.75rem', color: 'var(--color-border)' },
   brewAgainBtn: {
     background: 'none', border: '1px solid var(--color-border)',

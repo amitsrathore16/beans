@@ -8,8 +8,8 @@ A mobile-first coffee companion for tracking home brews, café tastings, and bea
 
 ## Features
 
-- **Home brews** — log dose, yield, brew time, water temp, and sensory notes
-- **Café tastings** — record café visits with ratings and tasting notes
+- **Home brews** — structured coffee identity (roaster, origin, species, process, roast date), brew method → equipment cascade, dose/ratio/yield with extraction indicator, SCA sensory profile
+- **Café tastings** — record café visits with ratings, sensory notes, and would-return flag
 - **Bean inventory** — track bag weight, roast date, and freshness; weight deducts automatically after each brew
 - **Real-time sync** — inventory updates across tabs via Supabase Realtime
 
@@ -73,10 +73,10 @@ Frontend runs at `http://localhost:5173`.
 ### 4. Backend (FastAPI)
 
 ```bash
-cd ../beans   # repo root
+cd grounded-api
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r grounded-api/requirements.txt
+pip install -r requirements.txt
 ```
 
 Create `grounded-api/.env`:
@@ -88,11 +88,10 @@ SUPABASE_JWT_SECRET=<JWT secret from supabase start>
 ENVIRONMENT=development
 ```
 
-Start the API:
+Start the API (from inside `grounded-api/`):
 
 ```bash
-cd grounded-api
-../.venv/bin/uvicorn main:app --reload
+uvicorn main:app --reload
 ```
 
 API runs at `http://localhost:8000`. Health check: `GET http://localhost:8000/health`.
@@ -100,8 +99,8 @@ API runs at `http://localhost:8000`. Health check: `GET http://localhost:8000/he
 ### 5. Run backend tests
 
 ```bash
-cd grounded-api
-../.venv/bin/python -m pytest tests/ -v
+# from inside grounded-api/ with the venv active
+pytest tests/ -v
 ```
 
 ---
@@ -116,7 +115,8 @@ beans/
 │       ├── contexts/       # AuthContext
 │       ├── hooks/          # useLogs, useBeans, useBeansRealtime
 │       ├── lib/            # supabaseClient, apiClient
-│       └── pages/          # Home, Login, Register
+│       ├── pages/          # Home, Login, Register
+│       └── utils/          # migration (localStorage → Supabase)
 ├── grounded-api/           # FastAPI backend
 │   ├── routers/            # logs.py, inventory.py
 │   ├── main.py
