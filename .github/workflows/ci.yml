@@ -78,7 +78,9 @@ jobs:
           version: latest
 
       - name: Start Supabase local
-        run: supabase start
+        run: |
+          supabase start
+          echo "SUPABASE_ANON_KEY=$(supabase status --output json | jq -r '.ANON_KEY')" >> $GITHUB_ENV
 
       - name: Apply migrations
         run: supabase db reset

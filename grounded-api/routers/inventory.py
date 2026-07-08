@@ -35,28 +35,36 @@ async def match_bean(name: str, dose_g: float = 0, user_id: str = Depends(get_cu
 async def deduct_inventory(payload: InventoryDeductRequest, user_id: str = Depends(get_current_user)):
     db = get_supabase()
 
-    bean_result = db.table("beans").select("remaining_weight_g").eq("id", payload.bean_id).eq("user_id", user_id).execute()
-    if not bean_result.data:
+    # Single atomic RPC: locks the row, checks stock, and deducts in one transaction.
+    # Eliminates the TOCTOU race that existed when read and update were separate calls.
+    result = db.rpc("deduct_bean_stock", {
+        "p_bean_id": str(payload.bean_id),
+        "p_user_id": user_id,
+        "p_dose_g":  float(payload.dose_g),
+    }).execute()
+
+    if not result.data:
         raise HTTPException(status_code=404, detail="Bean not found")
 
-    remaining = bean_result.data[0]["remaining_weight_g"]
-    if remaining < payload.dose_g:
+    row = result.data[0]
+    if not row["success"]:
+        remaining = row["remaining_weight_g"]
         raise HTTPException(
             status_code=422,
             detail=f"Insufficient stock: {remaining}g remaining, {payload.dose_g}g requested",
         )
 
-    new_remaining = remaining - payload.dose_g
+    new_remaining   = row["remaining_weight_g"]
+    weight_before   = row["weight_before_g"]
 
-    db.table("beans").update({"remaining_weight_g": new_remaining}).eq("id", payload.bean_id).execute()
     db.table("inventory_events").insert({
-        "user_id": user_id,
-        "bean_id": payload.bean_id,
-        "log_id": payload.log_id,
-        "delta_g": -payload.dose_g,
-        "weight_before_g": remaining,
-        "weight_after_g": new_remaining,
-        "source": "brew_save",
+        "user_id":        user_id,
+        "bean_id":        str(payload.bean_id),
+        "log_id":         str(payload.log_id),
+        "delta_g":        -payload.dose_g,
+        "weight_before_g": weight_before,
+        "weight_after_g":  new_remaining,
+        "source":         "brew_save",
     }).execute()
 
     return InventoryDeductResponse(

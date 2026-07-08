@@ -241,13 +241,13 @@ export function NewLogForm({ onClose, onSaved, prefill }: Props) {
 
           {/* Group A — Product */}
           <GroupLabel label="Product" />
-          <Field label="Roaster / Brand *">
+          <Field label="Roaster / Brand">
             <input value={roaster} onChange={e => setRoaster(e.target.value)}
-              required style={s.input} placeholder="e.g. Blue Tokai, Third Wave Coffee" />
+              style={s.input} placeholder="e.g. Blue Tokai, Third Wave Coffee" />
           </Field>
           <Field label="Coffee name *">
             <input value={coffeeName} onChange={e => setCoffeeName(e.target.value)}
-              required style={s.input} placeholder="e.g. Attikan Estate, Monsoon Malabar AA" />
+              required style={s.input} placeholder="e.g. Ethiopia Yirgacheffe" />
           </Field>
           <Field label="Coffee type">
             <SingleChipRow options={COFFEE_TYPES} selected={coffeeType} onSelect={setCoffeeType} />

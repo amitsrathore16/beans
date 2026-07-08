@@ -162,7 +162,7 @@ export function Home() {
         )}
       </main>
 
-      <button onClick={() => setShowForm(true)} style={styles.fab} aria-label={tab === 'beans' ? 'Add bean' : 'Add log'}>
+      <button onClick={() => setShowForm(true)} style={styles.fab}>
         +
       </button>
 

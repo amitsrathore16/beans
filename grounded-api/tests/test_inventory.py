@@ -12,7 +12,16 @@ def auth_header():
 
 def _fake_db(beans=None, events_inserted=None):
     """Return a fake supabase client. events_inserted is a list that captures inserts."""
-    bean_rows = beans if beans is not None else []
+    bean_rows = [dict(b) for b in (beans or [])]
+
+    class FakeRpcQuery:
+        def __init__(self, data):
+            self._data = data
+
+        def execute(self):
+            r = MagicMock()
+            r.data = self._data
+            return r
 
     class FakeBeanQuery:
         def __init__(self):
@@ -21,11 +30,6 @@ def _fake_db(beans=None, events_inserted=None):
         def select(self, *a): return self
         def eq(self, *a): return self
         def is_(self, *a): return self
-
-        def update(self, data):
-            for row in self._rows:
-                row.update(data)
-            return self
 
         def execute(self):
             r = MagicMock()
@@ -52,6 +56,39 @@ def _fake_db(beans=None, events_inserted=None):
             if name == "beans":
                 return self._beans
             return self._events
+
+        def rpc(self, fn_name, params):
+            """Simulate deduct_bean_stock: atomic check-and-subtract."""
+            if fn_name != "deduct_bean_stock":
+                return FakeRpcQuery([])
+
+            p_bean_id = params["p_bean_id"]
+            p_user_id = params["p_user_id"]
+            p_dose_g  = params["p_dose_g"]
+
+            match = next(
+                (b for b in bean_rows
+                 if b["id"] == p_bean_id and b["user_id"] == p_user_id),
+                None,
+            )
+            if match is None:
+                return FakeRpcQuery([])  # caller maps to 404
+
+            weight_before = match["remaining_weight_g"]
+            if weight_before < p_dose_g:
+                return FakeRpcQuery([{
+                    "remaining_weight_g": weight_before,
+                    "weight_before_g":    weight_before,
+                    "success":            False,
+                }])
+
+            new_remaining = weight_before - p_dose_g
+            match["remaining_weight_g"] = new_remaining  # mutate in-place (simulates UPDATE)
+            return FakeRpcQuery([{
+                "remaining_weight_g": new_remaining,
+                "weight_before_g":    weight_before,
+                "success":            True,
+            }])
 
     return FakeDB()
 
