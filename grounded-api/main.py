@@ -12,8 +12,8 @@ load_dotenv()
 # Never use a wildcard subdomain — anyone can register *.vercel.app.
 _extra = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
 _origins = ["https://grounded.app"] + _extra
-if os.getenv("ENVIRONMENT") == "development":
-    _origins.append("http://localhost:5173")
+if os.getenv("ENVIRONMENT") in ("development", "test"):
+    _origins.extend(["http://localhost:5173", "http://127.0.0.1:5173"])
 
 app = FastAPI(title="Grounded API", version="1.0.0")
 

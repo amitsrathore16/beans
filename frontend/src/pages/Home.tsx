@@ -110,7 +110,7 @@ export function Home() {
         <button onClick={signOut} style={styles.signOut}>Sign out</button>
       </header>
 
-      <div style={styles.tabsWrapper}>
+      <div style={styles.tabsWrapper} aria-hidden={showForm || undefined}>
         <nav style={styles.tabs}>
           {(['home', 'cafe', 'beans'] as Tab[]).map(t => (
             <button

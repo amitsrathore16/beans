@@ -40,7 +40,7 @@ export function BeanCard({ bean, onDelete }: Props) {
           <span style={{ ...styles.weightNum, color: lowStock ? 'var(--color-error)' : 'var(--color-espresso)' }}>
             {bean.remaining_weight_g.toFixed(0)}g
           </span>
-          <span style={styles.weightLabel}> / {bean.total_weight_g.toFixed(0)}g remaining</span>
+          <span style={styles.weightLabel}> remaining</span>
           {lowStock && <span style={styles.lowStock}> · Low stock</span>}
         </div>
         <span style={styles.pct}>{pct}%</span>
