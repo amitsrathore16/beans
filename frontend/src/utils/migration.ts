@@ -50,10 +50,13 @@ export function migrateLegacyLog(brew: LegacyBrew): {
   sensory_profile?: SensoryProfile
 } {
   const sensory: SensoryProfile = {}
-  if (brew.body)       sensory.body      = brew.body
-  if (brew.mouthfeel)  sensory.mouthfeel = brew.mouthfeel
-  if (brew.finish)     sensory.finish    = [brew.finish]
-  if (brew.acidity)    sensory.acidity   = [brew.acidity]
+
+  if (brew.body)      sensory.body      = brew.body
+  if (brew.mouthfeel) sensory.mouthfeel = brew.mouthfeel
+
+  // acidity and finish were stored as strings — wrap in arrays to match v3 shape
+  if (brew.acidity)          sensory.acidity = [brew.acidity]
+  if (brew.finish)           sensory.finish  = [brew.finish]
   if (brew.flavour_tags?.length) sensory.flavour = brew.flavour_tags
 
   return {
@@ -87,20 +90,27 @@ export async function migrateFromLocalStorage(): Promise<void> {
         method: 'POST',
         body: JSON.stringify({
           log: {
-            log_type:       'home',
-            coffee_name:    brew.coffee_name ?? brew.bean_name ?? 'Unknown',
-            roaster:        brew.roaster,
-            roast_level:    brew.roast_level,
-            brew_method:    brew.brew_method,
-            equipment:      migrated.equipment,
-            dose_g:         brew.dose_g,
-            actual_yield_g: migrated.actual_yield_g,
-            brew_time_s:    brew.brew_time_s,
-            grind_size:     brew.grind_size,
-            water_temp_c:   brew.water_temp_c,
-            rating:         brew.rating,
-            notes:          brew.notes,
+            log_type:        'home',
+            coffee_name:     brew.coffee_name ?? brew.bean_name ?? 'Unknown',
+            roaster:         brew.roaster,
+            roast_level:     brew.roast_level,
+            brew_method:     brew.brew_method,
+            equipment:       migrated.equipment,
+            dose_g:          brew.dose_g,
+            actual_yield_g:  migrated.actual_yield_g,
+            brew_time_s:     brew.brew_time_s,
+            grind_size:      brew.grind_size,
+            water_temp_c:    brew.water_temp_c,
+            rating:          brew.rating,
+            notes:           brew.notes,
             sensory_profile: migrated.sensory_profile,
+            // New v3 fields default to undefined for legacy entries
+            coffee_type:    null,
+            origin_country: null,
+            origin_region:  null,
+            species:        null,
+            varietal:       null,
+            roast_date:     null,
           },
           deduct_inventory: false,
         }),
@@ -128,6 +138,12 @@ export async function migrateFromLocalStorage(): Promise<void> {
             rating:          tasting.rating,
             notes:           tasting.notes,
             sensory_profile: migrated.sensory_profile,
+            coffee_type:    null,
+            origin_country: null,
+            origin_region:  null,
+            species:        null,
+            varietal:       null,
+            roast_date:     null,
           },
           deduct_inventory: false,
         }),

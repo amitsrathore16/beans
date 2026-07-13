@@ -16,14 +16,20 @@ export interface Log {
   id: string
   user_id: string
   log_type: 'home' | 'cafe'
-  // Coffee identity
-  brand?: string
-  coffee_name: string
-  origin?: string
+  // Group A — Product
   roaster?: string
-  varietal?: string
-  roast_level?: string
+  coffee_name: string
+  coffee_type?: string
+  // Group B — Origin
+  origin_country?: string
+  origin_region?: string
+  // Group C — Bean Profile
+  species?: string
   process_method?: string
+  varietal?: string
+  // Group D — Roast Profile
+  roast_level?: string
+  roast_date?: string
   // Equipment
   brew_method?: string
   equipment?: string

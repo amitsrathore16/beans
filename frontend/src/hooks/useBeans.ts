@@ -84,9 +84,12 @@ export interface BeanCreatePayload {
 }
 
 export async function createBean(payload: BeanCreatePayload): Promise<Bean> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('Not authenticated')
+
   const { data, error } = await supabase
     .from('beans')
-    .insert(payload)
+    .insert({ ...payload, user_id: session.user.id })
     .select()
     .single()
 

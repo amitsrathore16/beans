@@ -7,18 +7,22 @@ from routers import logs, inventory
 
 load_dotenv()
 
+# Build the CORS origin allowlist from explicit environment config.
+# ALLOWED_ORIGINS: comma-separated list of additional production/preview origins.
+# Never use a wildcard subdomain — anyone can register *.vercel.app.
+_extra = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+_origins = ["https://grounded.app"] + _extra
+if os.getenv("ENVIRONMENT") in ("development", "test"):
+    _origins.extend(["http://localhost:5173", "http://127.0.0.1:5173"])
+
 app = FastAPI(title="Grounded API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://grounded.app",
-        "https://*.vercel.app",
-        "http://localhost:5173",
-    ],
+    allow_origins=_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 app.include_router(logs.router)

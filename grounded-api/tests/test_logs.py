@@ -150,12 +150,31 @@ class TestSaveLog:
         resp = client.post("/api/v1/logs", json={
             "log": {
                 "log_type": "home",
-                "brand": "Blue Tokai",
+                "roaster": "Blue Tokai",
                 "coffee_name": "Attikan Estate",
-                "origin": "Attikan Estate, Coorg",
-                "varietal": "100% Arabica",
-                "roast_level": "Medium",
+                "coffee_type": "Single Origin",
+                "origin_country": "India",
+                "origin_region": "Attikan Estate, Coorg",
+                "species": "100% Arabica",
                 "process_method": "Washed",
+                "varietal": "SL28",
+                "roast_level": "Medium",
+                "roast_date": "2026-06-15",
+            },
+            "deduct_inventory": False,
+        }, headers=auth_header())
+
+        assert resp.status_code == 200
+
+    def test_monsooned_process_method_accepted(self, client, monkeypatch):
+        db = _make_db()
+        monkeypatch.setattr("routers.logs.get_supabase", lambda: db)
+
+        resp = client.post("/api/v1/logs", json={
+            "log": {
+                "log_type": "home",
+                "coffee_name": "Monsoon Malabar AA",
+                "process_method": "Monsooned",
             },
             "deduct_inventory": False,
         }, headers=auth_header())
@@ -239,8 +258,16 @@ class TestSaveLog:
 class TestDuplicateLog:
     HOME_SOURCE = {
         "id": LOG_ID, "user_id": USER_ID, "log_type": "home",
-        "brand": "Blue Tokai",
+        "roaster": "Blue Tokai",
         "coffee_name": "Attikan Estate",
+        "coffee_type": "Single Origin",
+        "origin_country": "India",
+        "origin_region": "Attikan Estate, Coorg",
+        "species": "100% Arabica",
+        "process_method": "Washed",
+        "varietal": "SL28",
+        "roast_level": "Medium",
+        "roast_date": "2026-06-15",
         "brew_method": "Espresso",
         "equipment": "Breville Barista Express",
         "dose_g": 18.0,
@@ -378,8 +405,10 @@ class TestDuplicateLog:
         client.post(f"/api/v1/logs/{LOG_ID}/duplicate",
                     json={"mode": "log_with_changes"}, headers=auth_header())
 
-        assert kept.get("brand") == "Blue Tokai"
+        assert kept.get("roaster") == "Blue Tokai"
         assert kept.get("coffee_name") == "Attikan Estate"
+        assert kept.get("coffee_type") == "Single Origin"
+        assert kept.get("origin_country") == "India"
         assert kept.get("brew_method") == "Espresso"
 
     def test_cafe_log_duplicate_returns_422(self, client, monkeypatch):

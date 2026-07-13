@@ -16,14 +16,20 @@ class DuplicateMode(str, Enum):
 
 class LogCreate(BaseModel):
     log_type: LogType
-    # Coffee identity
-    brand: Optional[str] = None
-    coffee_name: str
-    origin: Optional[str] = None
+    # Group A — Product
     roaster: Optional[str] = None
-    varietal: Optional[str] = None
-    roast_level: Optional[str] = None
+    coffee_name: str
+    coffee_type: Optional[str] = None        # 'Single Origin' | 'Blend'
+    # Group B — Origin
+    origin_country: Optional[str] = None
+    origin_region: Optional[str] = None
+    # Group C — Bean Profile
+    species: Optional[str] = None            # '100% Arabica' | '100% Robusta' | 'Arabica-Robusta Blend' | 'Other'
     process_method: Optional[str] = None
+    varietal: Optional[str] = None
+    # Group D — Roast Profile
+    roast_level: Optional[str] = None
+    roast_date: Optional[str] = None         # ISO date string YYYY-MM-DD
     # Equipment
     brew_method: Optional[str] = None
     equipment: Optional[str] = None
