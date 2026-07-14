@@ -44,7 +44,7 @@ interface LegacyBean {
   remaining_weight_g?: number
 }
 
-export function migrateLegacyLog(brew: LegacyBrew): {
+function migrateLegacyLog(brew: LegacyBrew): {
   actual_yield_g?: number
   equipment?: string
   sensory_profile?: SensoryProfile
@@ -66,6 +66,37 @@ export function migrateLegacyLog(brew: LegacyBrew): {
   }
 }
 
+async function migrateItems<T extends LegacyBrew>(
+  items: T[],
+  log_type: 'home' | 'cafe',
+  extra: (item: T, m: ReturnType<typeof migrateLegacyLog>) => Record<string, unknown>,
+): Promise<void> {
+  for (const item of items) {
+    try {
+      const m = migrateLegacyLog(item)
+      await apiFetch('/logs', {
+        method: 'POST',
+        body: JSON.stringify({
+          log: {
+            log_type,
+            coffee_name:     item.coffee_name ?? item.bean_name ?? 'Unknown',
+            roaster:         item.roaster,
+            roast_level:     item.roast_level,
+            brew_method:     item.brew_method,
+            rating:          item.rating,
+            notes:           item.notes,
+            sensory_profile: m.sensory_profile,
+            ...extra(item, m),
+          },
+          deduct_inventory: false,
+        }),
+      })
+    } catch {
+      // skip individual failures — don't block migration
+    }
+  }
+}
+
 export async function migrateFromLocalStorage(): Promise<void> {
   if (localStorage.getItem(MIGRATION_FLAG) === 'true') return
 
@@ -83,75 +114,20 @@ export async function migrateFromLocalStorage(): Promise<void> {
   const tastings: LegacyTasting[] = rawTastings ? JSON.parse(rawTastings) : []
   const beans: LegacyBean[]       = rawBeans    ? JSON.parse(rawBeans)    : []
 
-  for (const brew of brews) {
-    try {
-      const migrated = migrateLegacyLog(brew)
-      await apiFetch('/logs', {
-        method: 'POST',
-        body: JSON.stringify({
-          log: {
-            log_type:        'home',
-            coffee_name:     brew.coffee_name ?? brew.bean_name ?? 'Unknown',
-            roaster:         brew.roaster,
-            roast_level:     brew.roast_level,
-            brew_method:     brew.brew_method,
-            equipment:       migrated.equipment,
-            dose_g:          brew.dose_g,
-            actual_yield_g:  migrated.actual_yield_g,
-            brew_time_s:     brew.brew_time_s,
-            grind_size:      brew.grind_size,
-            water_temp_c:    brew.water_temp_c,
-            rating:          brew.rating,
-            notes:           brew.notes,
-            sensory_profile: migrated.sensory_profile,
-            // New v3 fields default to undefined for legacy entries
-            coffee_type:    null,
-            origin_country: null,
-            origin_region:  null,
-            species:        null,
-            varietal:       null,
-            roast_date:     null,
-          },
-          deduct_inventory: false,
-        }),
-      })
-    } catch {
-      // Skip individual failures — don't block migration
-    }
-  }
+  await migrateItems(brews, 'home', (b, m) => ({
+    equipment:      m.equipment,
+    dose_g:         b.dose_g,
+    actual_yield_g: m.actual_yield_g,
+    brew_time_s:    b.brew_time_s,
+    grind_size:     b.grind_size,
+    water_temp_c:   b.water_temp_c,
+  }))
 
-  for (const tasting of tastings) {
-    try {
-      const migrated = migrateLegacyLog(tasting)
-      await apiFetch('/logs', {
-        method: 'POST',
-        body: JSON.stringify({
-          log: {
-            log_type:        'cafe',
-            coffee_name:     tasting.coffee_name ?? tasting.bean_name ?? 'Unknown',
-            roaster:         tasting.roaster,
-            roast_level:     tasting.roast_level,
-            brew_method:     tasting.brew_method,
-            cafe_name:       tasting.cafe_name,
-            location:        tasting.location,
-            would_return:    tasting.would_return,
-            rating:          tasting.rating,
-            notes:           tasting.notes,
-            sensory_profile: migrated.sensory_profile,
-            coffee_type:    null,
-            origin_country: null,
-            origin_region:  null,
-            species:        null,
-            varietal:       null,
-            roast_date:     null,
-          },
-          deduct_inventory: false,
-        }),
-      })
-    } catch {
-      // Skip individual failures
-    }
-  }
+  await migrateItems(tastings, 'cafe', (t) => ({
+    cafe_name:   t.cafe_name,
+    location:    t.location,
+    would_return:t.would_return,
+  }))
 
   if (beans.length > 0) {
     const rows = beans

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { apiFetch } from '../lib/apiClient'
+import { useSoftDelete } from './useBeans'
 
 export interface SensoryProfile {
   aroma?: string[]
@@ -107,21 +108,7 @@ function useLogs(logType?: 'home' | 'cafe') {
 export function useHomeLogs() { return useLogs('home') }
 export function useCafeLogs() { return useLogs('cafe') }
 
-export function useSoftDeleteLog() {
-  const [loading, setLoading] = useState(false)
-
-  async function softDelete(id: string) {
-    setLoading(true)
-    const { error } = await supabase
-      .from('logs')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', id)
-    setLoading(false)
-    if (error) throw new Error(error.message)
-  }
-
-  return { softDelete, loading }
-}
+export function useSoftDeleteLog() { return useSoftDelete('logs') }
 
 export interface LogCreatePayload {
   log: Omit<Log, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'deleted_at'>

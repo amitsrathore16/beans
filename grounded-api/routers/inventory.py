@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from models import BeanMatchResponse, InventoryDeductRequest, InventoryDeductResponse
 from dependencies import get_current_user
-from database import get_supabase
+from database import get_supabase, find_bean_by_name
 
 router = APIRouter(prefix="/api/v1", tags=["inventory"])
 
@@ -11,12 +11,7 @@ LOW_STOCK_THRESHOLD_G = 50.0
 @router.get("/beans/match", response_model=BeanMatchResponse, response_model_exclude_none=True)
 async def match_bean(name: str, dose_g: float = 0, user_id: str = Depends(get_current_user)):
     db = get_supabase()
-    result = db.table("beans").select("*").eq("user_id", user_id).is_("deleted_at", "null").execute()
-
-    match = next(
-        (b for b in (result.data or []) if b["name"].lower() == name.lower()),
-        None,
-    )
+    match = find_bean_by_name(db, user_id, name)
     if not match:
         return BeanMatchResponse(matched=False)
 

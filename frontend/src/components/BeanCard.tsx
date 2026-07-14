@@ -1,4 +1,4 @@
-import { getFreshness, FRESHNESS_COLOR, FRESHNESS_TEXT } from '../hooks/useBeans'
+import { getFreshness, FRESHNESS_STYLE } from '../hooks/useBeans'
 import type { Bean } from '../hooks/useBeans'
 
 interface Props {
@@ -18,8 +18,8 @@ export function BeanCard({ bean, onDelete }: Props) {
           {freshness && (
             <span style={{
               ...styles.badge,
-              background: FRESHNESS_COLOR[freshness],
-              color: FRESHNESS_TEXT[freshness],
+              background: FRESHNESS_STYLE[freshness].bg,
+              color: FRESHNESS_STYLE[freshness].text,
             }}>
               {freshness}
             </span>

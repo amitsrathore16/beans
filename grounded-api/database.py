@@ -15,3 +15,8 @@ def get_supabase() -> Client:
         key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
         _client = create_client(url, key)
     return _client
+
+
+def find_bean_by_name(db: Client, user_id: str, name: str):
+    result = db.table("beans").select("*").eq("user_id", user_id).is_("deleted_at", "null").execute()
+    return next((b for b in (result.data or []) if b["name"].lower() == name.lower()), None)

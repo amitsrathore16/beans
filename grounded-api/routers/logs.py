@@ -4,7 +4,7 @@ from models import (
     InventoryMatch, LogType,
 )
 from dependencies import get_current_user
-from database import get_supabase
+from database import get_supabase, find_bean_by_name
 
 router = APIRouter(prefix="/api/v1/logs", tags=["logs"])
 
@@ -25,7 +25,7 @@ async def save_log(payload: LogSaveRequest, user_id: str = Depends(get_current_u
     inventory_match = None
 
     if payload.log.log_type == LogType.home and payload.deduct_inventory:
-        match = _match_bean(db, user_id, payload.log.coffee_name, payload.log.dose_g or 0)
+        match = find_bean_by_name(db, user_id, payload.log.coffee_name)
         if match:
             inventory_match = InventoryMatch(
                 bean_id=match["id"],
@@ -62,11 +62,3 @@ async def duplicate_log(log_id: str, payload: DuplicateRequest, user_id: str = D
         raise HTTPException(status_code=500, detail="Failed to create duplicate log")
 
     return DuplicateResponse(new_log_id=insert_result.data[0]["id"], mode=payload.mode)
-
-
-def _match_bean(db, user_id: str, coffee_name: str, dose_g: float):
-    result = db.table("beans").select("*").eq("user_id", user_id).is_("deleted_at", "null").execute()
-    for bean in result.data or []:
-        if bean["name"].lower() == coffee_name.lower():
-            return bean
-    return None

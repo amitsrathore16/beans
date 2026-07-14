@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
 export interface Bean {
@@ -30,18 +31,11 @@ export function getFreshness(roastDate?: string): Freshness | null {
   return 'Stale'
 }
 
-export const FRESHNESS_COLOR: Record<Freshness, string> = {
-  Fresh: '#d4edda',
-  Good:  '#d1ecf1',
-  Aging: '#fff3cd',
-  Stale: '#f8d7da',
-}
-
-export const FRESHNESS_TEXT: Record<Freshness, string> = {
-  Fresh: '#155724',
-  Good:  '#0c5460',
-  Aging: '#856404',
-  Stale: '#721c24',
+export const FRESHNESS_STYLE: Record<Freshness, { bg: string; text: string }> = {
+  Fresh: { bg: '#d4edda', text: '#155724' },
+  Good:  { bg: '#d1ecf1', text: '#0c5460' },
+  Aging: { bg: '#fff3cd', text: '#856404' },
+  Stale: { bg: '#f8d7da', text: '#721c24' },
 }
 
 export function useBeans() {
@@ -97,13 +91,13 @@ export async function createBean(payload: BeanCreatePayload): Promise<Bean> {
   return data as Bean
 }
 
-export function useSoftDeleteBean() {
+export function useSoftDelete(table: string) {
   const [loading, setLoading] = useState(false)
 
   async function softDelete(id: string) {
     setLoading(true)
     const { error } = await supabase
-      .from('beans')
+      .from(table)
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id)
     setLoading(false)
@@ -111,4 +105,36 @@ export function useSoftDeleteBean() {
   }
 
   return { softDelete, loading }
+}
+
+export function useSoftDeleteBean() { return useSoftDelete('beans') }
+
+export function useBeansRealtime(
+  userId: string | undefined,
+  setBeans: Dispatch<SetStateAction<Bean[]>>,
+) {
+  useEffect(() => {
+    if (!userId) return
+
+    const channel = supabase
+      .channel('beans-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'beans',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const updated = payload.new as Bean
+          setBeans(prev =>
+            prev.map(b => b.id === updated.id ? updated : b)
+          )
+        },
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [userId, setBeans])
 }
