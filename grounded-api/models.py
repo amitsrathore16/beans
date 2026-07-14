@@ -1,7 +1,7 @@
 from __future__ import annotations
 from enum import Enum
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from typing import Annotated, List, Optional
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class LogType(str, Enum):
@@ -14,51 +14,65 @@ class DuplicateMode(str, Enum):
     log_with_changes = "log_with_changes"
 
 
+_Tag = Annotated[str, Field(max_length=100)]
+
+
+class SensoryProfile(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    aroma:      Optional[List[_Tag]] = Field(default=None, max_length=20)
+    flavour:    Optional[List[_Tag]] = Field(default=None, max_length=20)
+    acidity:    Optional[List[_Tag]] = Field(default=None, max_length=20)
+    body:       Optional[str]        = Field(default=None, max_length=100)
+    bitterness: Optional[str]        = Field(default=None, max_length=100)
+    mouthfeel:  Optional[str]        = Field(default=None, max_length=100)
+    finish:     Optional[List[_Tag]] = Field(default=None, max_length=20)
+
+
 class LogCreate(BaseModel):
     log_type: LogType
     # Group A — Product
-    roaster: Optional[str] = None
-    coffee_name: str
-    coffee_type: Optional[str] = None        # 'Single Origin' | 'Blend'
+    roaster:     Optional[str] = Field(default=None, max_length=200)
+    coffee_name: str           = Field(max_length=200)
+    coffee_type: Optional[str] = Field(default=None, max_length=50)
     # Group B — Origin
-    origin_country: Optional[str] = None
-    origin_region: Optional[str] = None
+    origin_country: Optional[str] = Field(default=None, max_length=100)
+    origin_region:  Optional[str] = Field(default=None, max_length=200)
     # Group C — Bean Profile
-    species: Optional[str] = None            # '100% Arabica' | '100% Robusta' | 'Arabica-Robusta Blend' | 'Other'
-    process_method: Optional[str] = None
-    varietal: Optional[str] = None
+    species:        Optional[str] = Field(default=None, max_length=100)
+    process_method: Optional[str] = Field(default=None, max_length=100)
+    varietal:       Optional[str] = Field(default=None, max_length=200)
     # Group D — Roast Profile
-    roast_level: Optional[str] = None
-    roast_date: Optional[str] = None         # ISO date string YYYY-MM-DD
+    roast_level: Optional[str] = Field(default=None, max_length=50)
+    roast_date:  Optional[str] = Field(default=None, max_length=10)   # YYYY-MM-DD
     # Equipment
-    brew_method: Optional[str] = None
-    equipment: Optional[str] = None
+    brew_method: Optional[str] = Field(default=None, max_length=100)
+    equipment:   Optional[str] = Field(default=None, max_length=200)
     # Grind
-    grinder: Optional[str] = None
-    grind_size: Optional[str] = None
-    # Extraction
-    dose_g: Optional[float] = None
-    coffee_water_ratio: Optional[str] = None
-    ideal_yield_g: Optional[float] = None
-    actual_yield_g: Optional[float] = None
-    brew_time_s: Optional[int] = None
-    water_temp_c: Optional[float] = None
-    # Sensory
-    sensory_profile: Optional[Dict[str, Any]] = None
+    grinder:    Optional[str] = Field(default=None, max_length=200)
+    grind_size: Optional[str] = Field(default=None, max_length=50)
+    # Extraction — dose_g must be positive to prevent stock inflation via negative values
+    dose_g:             Optional[float] = Field(default=None, gt=0)
+    coffee_water_ratio: Optional[str]   = Field(default=None, max_length=20)
+    ideal_yield_g:      Optional[float] = Field(default=None, gt=0)
+    actual_yield_g:     Optional[float] = Field(default=None, gt=0)
+    brew_time_s:        Optional[int]   = None
+    water_temp_c:       Optional[float] = None
+    # Sensory — typed model rejects unknown keys and caps list/string lengths
+    sensory_profile: Optional[SensoryProfile] = None
     # Overall
-    rating: Optional[int] = Field(default=None, ge=1, le=5)
-    notes: Optional[str] = None
-    duplicated_from: Optional[str] = None
+    rating:         Optional[int] = Field(default=None, ge=1, le=5)
+    notes:          Optional[str] = Field(default=None, max_length=5000)
+    duplicated_from:Optional[str] = Field(default=None, max_length=36)
     # Café-only
-    cafe_name: Optional[str] = None
-    location: Optional[str] = None
-    would_return: Optional[str] = None
+    cafe_name:   Optional[str] = Field(default=None, max_length=200)
+    location:    Optional[str] = Field(default=None, max_length=500)
+    would_return:Optional[str] = None
 
 
 class LogSaveRequest(BaseModel):
     log: LogCreate
     deduct_inventory: bool = False
-    confirmed_bean_id: Optional[str] = None
+    confirmed_bean_id: Optional[str] = Field(default=None, max_length=36)
 
 
 class InventoryMatch(BaseModel):
@@ -93,9 +107,9 @@ class BeanMatchResponse(BaseModel):
 
 
 class InventoryDeductRequest(BaseModel):
-    bean_id: str
-    log_id: str
-    dose_g: float
+    bean_id: str = Field(max_length=36)
+    log_id:  str = Field(max_length=36)
+    dose_g:  float = Field(gt=0)   # positive guard prevents stock inflation
 
 
 class InventoryDeductResponse(BaseModel):

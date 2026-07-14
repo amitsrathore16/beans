@@ -18,5 +18,13 @@ def get_supabase() -> Client:
 
 
 def find_bean_by_name(db: Client, user_id: str, name: str):
-    result = db.table("beans").select("*").eq("user_id", user_id).is_("deleted_at", "null").execute()
-    return next((b for b in (result.data or []) if b["name"].lower() == name.lower()), None)
+    result = (
+        db.table("beans")
+        .select("id, name, remaining_weight_g")
+        .eq("user_id", user_id)
+        .ilike("name", name)
+        .is_("deleted_at", "null")
+        .limit(1)
+        .execute()
+    )
+    return result.data[0] if result.data else None

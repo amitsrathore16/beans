@@ -14,6 +14,11 @@ _JWKS_TIMEOUT  = 5      # seconds — urlopen hard timeout
 _jwks_cache:    Optional[dict] = None
 _jwks_fetched_at: float = 0.0
 
+# Algorithm is fixed from server config — never read from the (attacker-controlled) token header.
+# Set SUPABASE_JWT_ALG=RS256 for Supabase projects using asymmetric signing.
+_EXPECTED_ALG = os.getenv("SUPABASE_JWT_ALG", "HS256")
+_JWT_AUDIENCE = "authenticated"
+
 
 def _get_jwks(*, force_refresh: bool = False) -> dict:
     global _jwks_cache, _jwks_fetched_at
@@ -27,28 +32,20 @@ def _get_jwks(*, force_refresh: bool = False) -> dict:
 
 def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
     try:
-        header = jwt.get_unverified_header(token)
-    except JWTError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Malformed token: {e}")
-
-    alg = header.get("alg", "")
-    opts = {"verify_aud": False}
-
-    try:
-        if alg == "HS256":
+        if _EXPECTED_ALG == "HS256":
             payload = jwt.decode(
                 token,
                 os.environ["SUPABASE_JWT_SECRET"],
                 algorithms=["HS256"],
-                options=opts,
+                audience=_JWT_AUDIENCE,
             )
-        elif alg in ("RS256", "ES256"):
+        elif _EXPECTED_ALG in ("RS256", "ES256"):
             try:
                 payload = jwt.decode(
                     token,
                     _get_jwks(),
                     algorithms=["RS256", "ES256"],
-                    options=opts,
+                    audience=_JWT_AUDIENCE,
                 )
             except JWTError:
                 # Verification failed — may be a mid-TTL key rotation.
@@ -57,10 +54,13 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
                     token,
                     _get_jwks(force_refresh=True),
                     algorithms=["RS256", "ES256"],
-                    options=opts,
+                    audience=_JWT_AUDIENCE,
                 )
         else:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Unsupported algorithm: {alg}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Server misconfiguration: unknown SUPABASE_JWT_ALG '{_EXPECTED_ALG}'",
+            )
 
         user_id = payload.get("sub")
         if not user_id:

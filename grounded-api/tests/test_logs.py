@@ -29,6 +29,8 @@ def _make_db(logs=None, beans=None):
             return self
         def eq(self, *a): return self
         def is_(self, *a): return self
+        def ilike(self, *a): return self
+        def limit(self, *a): return self
         def execute(self):
             result = MagicMock()
             result.data = self._rows

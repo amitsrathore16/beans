@@ -34,6 +34,8 @@ def test_valid_token_passes_auth(client, monkeypatch):
         def select(self, *a): return self
         def eq(self, *a): return self
         def is_(self, *a): return self
+        def ilike(self, *a): return self
+        def limit(self, *a): return self
         def execute(self): return FakeResult()
 
     class FakeDB:
