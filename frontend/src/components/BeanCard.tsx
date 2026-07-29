@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { getFreshness, FRESHNESS_STYLE } from '../hooks/useBeans'
 import type { Bean } from '../hooks/useBeans'
+import { useBeanLogs } from '../hooks/useLogs'
 
 interface Props {
   bean: Bean
@@ -7,6 +9,8 @@ interface Props {
 }
 
 export function BeanCard({ bean, onDelete }: Props) {
+  const [expanded, setExpanded] = useState(false)
+  const { logs, loading, error } = useBeanLogs(bean.id, expanded)
   const freshness = getFreshness(bean.roast_date)
   const pct = Math.min(100, Math.round((bean.remaining_weight_g / bean.total_weight_g) * 100))
   const lowStock = bean.remaining_weight_g < 50
@@ -60,6 +64,35 @@ export function BeanCard({ bean, onDelete }: Props) {
             day: 'numeric', month: 'short', year: 'numeric',
           })}
         </p>
+      )}
+
+      <button onClick={() => setExpanded(e => !e)} style={styles.brewsToggle}>
+        {expanded ? 'Hide brews' : 'View brews'} {expanded ? '▲' : '▼'}
+      </button>
+
+      {expanded && (
+        <div style={styles.brewsList}>
+          {loading ? (
+            <p style={styles.brewsEmpty}>Loading…</p>
+          ) : error ? (
+            <p style={{ ...styles.brewsEmpty, color: 'var(--color-error)' }}>Couldn't load brews</p>
+          ) : logs.length === 0 ? (
+            <p style={styles.brewsEmpty}>No brews deducted from this bag yet</p>
+          ) : (
+            logs.map(log => (
+              <div key={log.id} style={styles.brewRow}>
+                <span style={styles.brewName}>
+                  {[log.brew_method, log.coffee_name].filter(Boolean).join(' · ')}
+                </span>
+                <span style={styles.brewMeta}>
+                  {log.dose_g != null && `${log.dose_g}g`}
+                  {log.rating != null && ` · ${'★'.repeat(log.rating)}`}
+                  {` · ${new Date(log.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
       )}
     </div>
   )
@@ -126,4 +159,16 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'width 0.3s ease',
   },
   date: { fontSize: '0.75rem', color: 'var(--color-muted)' },
+  brewsToggle: {
+    background: 'none', border: 'none', padding: 0, textAlign: 'left',
+    fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-caramel)', cursor: 'pointer',
+  },
+  brewsList: { display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' },
+  brewsEmpty: { fontSize: '0.8rem', color: 'var(--color-muted)' },
+  brewRow: {
+    display: 'flex', flexDirection: 'column', gap: '2px',
+    paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-border)',
+  },
+  brewName: { fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-espresso)' },
+  brewMeta: { fontSize: '0.75rem', color: 'var(--color-muted)' },
 }

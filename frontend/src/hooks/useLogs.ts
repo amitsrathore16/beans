@@ -108,6 +108,52 @@ function useLogs(logType?: 'home' | 'cafe') {
 export function useHomeLogs() { return useLogs('home') }
 export function useCafeLogs() { return useLogs('cafe') }
 
+// Just the columns the bean card's brew list renders — avoids over-fetching
+// full log rows (sensory_profile jsonb, notes, …) through the embed.
+export type BeanLog = Pick<
+  Log,
+  'id' | 'coffee_name' | 'brew_method' | 'dose_g' | 'rating' | 'created_at' | 'deleted_at'
+>
+
+const BEAN_LOG_COLS = 'id,coffee_name,brew_method,dose_g,rating,created_at,deleted_at'
+
+// Related brew logs for one bean — the only bean↔log link is the inventory_events
+// ledger (confirmed deductions), so we read through it. Lazy-fetched: only runs
+// when `enabled` (i.e. the card is expanded).
+export function useBeanLogs(beanId: string, enabled: boolean) {
+  const [logs, setLogs] = useState<BeanLog[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!enabled) return
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    supabase
+      .from('inventory_events')
+      .select(`log:logs(${BEAN_LOG_COLS})`)
+      .eq('bean_id', beanId)
+      .not('log_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) {
+          setError(error.message)
+        } else {
+          // PostgREST's embed-alias return type isn't inferable here, so cast the
+          // known shape; if the embed shape is ever wrong this fails at runtime.
+          const rows = (data ?? []) as unknown as { log: BeanLog | null }[]
+          setLogs(rows.map(r => r.log).filter((l): l is BeanLog => !!l && !l.deleted_at))
+        }
+        setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [beanId, enabled])
+
+  return { logs, loading, error }
+}
+
 export function useSoftDeleteLog() { return useSoftDelete('logs') }
 
 export interface LogCreatePayload {
