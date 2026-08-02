@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from models import (
     LogSaveRequest, LogSaveResponse, DuplicateRequest, DuplicateResponse,
-    InventoryMatch, LogType,
+    InventoryMatch, LogType, LogUpdate,
 )
 from dependencies import get_current_user
 from database import get_supabase, find_bean_by_name
@@ -52,6 +52,27 @@ async def save_log(request: Request, payload: LogSaveRequest, user_id: str = Dep
             )
 
     return LogSaveResponse(log_id=log_id, inventory_match=inventory_match)
+
+
+@router.patch("/{log_id}")
+@limiter.limit("120/minute")
+async def update_log(request: Request, log_id: str, payload: LogUpdate, user_id: str = Depends(get_current_user)):
+    db = get_supabase()
+    data = payload.model_dump(exclude_none=True)
+    if not data:
+        raise HTTPException(status_code=400, detail="No editable fields provided")
+
+    result = (
+        db.table("logs")
+        .update(data)
+        .eq("id", log_id)
+        .eq("user_id", user_id)
+        .is_("deleted_at", "null")
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Log not found")
+    return {"log_id": log_id}
 
 
 @router.post("/{log_id}/duplicate", response_model=DuplicateResponse)

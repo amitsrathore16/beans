@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useHomeLogs, useCafeLogs, useSoftDeleteLog, duplicateLog } from '../hooks/useLogs'
-import type { InventoryMatch, DuplicateMode } from '../hooks/useLogs'
+import type { InventoryMatch, DuplicateMode, Log } from '../hooks/useLogs'
 import { useBeans, useSoftDeleteBean } from '../hooks/useBeans'
 import { useBeansRealtime } from '../hooks/useBeansRealtime'
 import type { Bean } from '../hooks/useBeans'
@@ -11,6 +11,7 @@ import { NewLogForm } from '../components/NewLogForm'
 import type { LogPrefill } from '../components/NewLogForm'
 import { NewBeanForm } from '../components/NewBeanForm'
 import { InventoryMatchModal } from '../components/InventoryMatchModal'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { apiFetch } from '../lib/apiClient'
 
 type Tab = 'home' | 'cafe' | 'beans'
@@ -20,7 +21,10 @@ export function Home() {
   const [tab, setTab] = useState<Tab>('home')
   const [showForm, setShowForm] = useState(false)
   const [logPrefill, setLogPrefill] = useState<LogPrefill | undefined>(undefined)
+  const [editLog, setEditLog] = useState<Log | undefined>(undefined)
+  const [editBean, setEditBean] = useState<Bean | undefined>(undefined)
   const [pendingMatch, setPendingMatch] = useState<{ match: InventoryMatch; logId: string } | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<{ kind: 'log' | 'bean'; id: string } | null>(null)
 
   const { logs: homeLogs, loading: homeLoading, refetch: refetchHome } = useHomeLogs()
   const { logs: cafeLogs, loading: cafeLoading, refetch: refetchCafe } = useCafeLogs()
@@ -32,9 +36,39 @@ export function Home() {
 
   async function handleLogSaved(logId: string, match: InventoryMatch | null) {
     setShowForm(false)
+    setEditLog(undefined)
     refetchHome()
     refetchCafe()
     if (match) setPendingMatch({ match, logId })
+  }
+
+  function handleEditLog(log: Log) {
+    setEditLog(log)
+    setShowForm(true)
+  }
+
+  function handleEditBean(bean: Bean) {
+    setEditBean(bean)
+    setShowForm(true)
+  }
+
+  function handleBeanEdited() {
+    setShowForm(false)
+    setEditBean(undefined)
+    refetchBeans()
+  }
+
+  async function doDelete() {
+    if (!confirmDelete) return
+    if (confirmDelete.kind === 'log') {
+      await softDeleteLog(confirmDelete.id)
+      refetchHome()
+      refetchCafe()
+    } else {
+      await softDeleteBean(confirmDelete.id)
+      refetchBeans()
+    }
+    setConfirmDelete(null)
   }
 
   async function handleDeductConfirm(beanId: string, logId: string, doseG: number) {
@@ -46,10 +80,8 @@ export function Home() {
     refetchBeans()
   }
 
-  async function handleDeleteLog(id: string) {
-    await softDeleteLog(id)
-    refetchHome()
-    refetchCafe()
+  function handleDeleteLog(id: string) {
+    setConfirmDelete({ kind: 'log', id })
   }
 
   async function handleDuplicate(id: string, mode: DuplicateMode) {
@@ -82,9 +114,8 @@ export function Home() {
     }
   }
 
-  async function handleDeleteBean(id: string) {
-    await softDeleteBean(id)
-    refetchBeans()
+  function handleDeleteBean(id: string) {
+    setConfirmDelete({ kind: 'bean', id })
   }
 
   function handleBeanSaved(bean: Bean) {
@@ -95,6 +126,8 @@ export function Home() {
   function handleFormClose() {
     setShowForm(false)
     setLogPrefill(undefined)
+    setEditLog(undefined)
+    setEditBean(undefined)
   }
 
   const TAB_LABELS: Record<Tab, string> = {
@@ -136,7 +169,7 @@ export function Home() {
           ) : (
             <div style={styles.list}>
               {beans.map(bean => (
-                <BeanCard key={bean.id} bean={bean} onDelete={handleDeleteBean} />
+                <BeanCard key={bean.id} bean={bean} onDelete={handleDeleteBean} onEdit={handleEditBean} />
               ))}
             </div>
           )
@@ -154,7 +187,7 @@ export function Home() {
             ) : (
               <div style={styles.list}>
                 {logs.map(log => (
-                  <LogCard key={log.id} log={log} onDelete={handleDeleteLog} onDuplicate={handleDuplicate} />
+                  <LogCard key={log.id} log={log} onDelete={handleDeleteLog} onEdit={handleEditLog} onDuplicate={handleDuplicate} />
                 ))}
               </div>
             )
@@ -167,7 +200,12 @@ export function Home() {
       </button>
 
       {showForm && tab === 'beans' && (
-        <NewBeanForm onClose={handleFormClose} onSaved={handleBeanSaved} />
+        <NewBeanForm
+          onClose={handleFormClose}
+          onSaved={handleBeanSaved}
+          editBean={editBean}
+          onEdited={handleBeanEdited}
+        />
       )}
 
       {showForm && tab !== 'beans' && (
@@ -175,6 +213,7 @@ export function Home() {
           onClose={handleFormClose}
           onSaved={handleLogSaved}
           prefill={logPrefill}
+          editLog={editLog}
         />
       )}
 
@@ -184,6 +223,17 @@ export function Home() {
           logId={pendingMatch.logId}
           onConfirm={handleDeductConfirm}
           onSkip={() => setPendingMatch(null)}
+        />
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title={confirmDelete.kind === 'log' ? 'Delete log?' : 'Delete bean?'}
+          message={confirmDelete.kind === 'log'
+            ? 'This log will be removed. This cannot be undone.'
+            : 'This bean bag will be removed from your inventory. This cannot be undone.'}
+          onConfirm={doDelete}
+          onCancel={() => setConfirmDelete(null)}
         />
       )}
 

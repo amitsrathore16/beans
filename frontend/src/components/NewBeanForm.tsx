@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { createBean } from '../hooks/useBeans'
+import { createBean, updateBeanMeta, adjustBeanQuantity } from '../hooks/useBeans'
 import type { Bean } from '../hooks/useBeans'
 
 const ROAST_LEVELS   = ['Light', 'Medium', 'Medium-Dark', 'Dark']
@@ -8,17 +8,21 @@ const PROCESS_METHODS = ['Washed', 'Natural', 'Honey', 'Anaerobic']
 interface Props {
   onClose: () => void
   onSaved: (bean: Bean) => void
+  editBean?: Bean          // when set, the form edits this bean
+  onEdited?: () => void    // called after a successful edit
 }
 
-export function NewBeanForm({ onClose, onSaved }: Props) {
-  const [name, setName]               = useState('')
-  const [roaster, setRoaster]         = useState('')
-  const [origin, setOrigin]           = useState('')
-  const [roastLevel, setRoastLevel]   = useState('')
-  const [process, setProcess]         = useState('')
-  const [roastDate, setRoastDate]     = useState('')
-  const [openedDate, setOpenedDate]   = useState('')
-  const [totalWeight, setTotalWeight] = useState('')
+export function NewBeanForm({ onClose, onSaved, editBean, onEdited }: Props) {
+  const isEdit = !!editBean
+  const [name, setName]               = useState(editBean?.name ?? '')
+  const [roaster, setRoaster]         = useState(editBean?.roaster ?? '')
+  const [origin, setOrigin]           = useState(editBean?.origin ?? '')
+  const [roastLevel, setRoastLevel]   = useState(editBean?.roast_level ?? '')
+  const [process, setProcess]         = useState(editBean?.process_method ?? '')
+  const [roastDate, setRoastDate]     = useState(editBean?.roast_date ?? '')
+  const [openedDate, setOpenedDate]   = useState(editBean?.opened_date ?? '')
+  const [totalWeight, setTotalWeight] = useState(editBean?.total_weight_g?.toString() ?? '')
+  const [remaining, setRemaining]     = useState(editBean?.remaining_weight_g?.toString() ?? '')
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState<string | null>(null)
 
@@ -27,6 +31,31 @@ export function NewBeanForm({ onClose, onSaved }: Props) {
     setError(null)
     setLoading(true)
     try {
+      if (editBean) {
+        const newRem = Number(remaining)
+        // Client-side guard mirrors the backend rule (which also enforces it).
+        if (newRem > editBean.remaining_weight_g) {
+          setError('Inventory can only be reduced. To add stock, create a new bean bag.')
+          setLoading(false)
+          return
+        }
+        await updateBeanMeta(editBean.id, {
+          name:           name.trim(),
+          roaster:        roaster || undefined,
+          origin:         origin || undefined,
+          roast_level:    roastLevel || undefined,
+          process_method: process || undefined,
+          roast_date:     roastDate || undefined,
+          opened_date:    openedDate || undefined,
+          total_weight_g: Number(totalWeight),
+        })
+        // Only call the (decrease-only, ledgered) adjust endpoint if it actually dropped.
+        if (newRem < editBean.remaining_weight_g) {
+          await adjustBeanQuantity(editBean.id, newRem)
+        }
+        onEdited?.()
+        return
+      }
       const total = Number(totalWeight)
       const bean = await createBean({
         name:               name.trim(),
@@ -51,7 +80,7 @@ export function NewBeanForm({ onClose, onSaved }: Props) {
     <div style={styles.overlay}>
       <div style={styles.sheet}>
         <div style={styles.sheetHeader}>
-          <h2 style={styles.title}>Add bean bag</h2>
+          <h2 style={styles.title}>{isEdit ? 'Edit bean' : 'Add bean bag'}</h2>
           <button onClick={onClose} style={styles.closeBtn}>×</button>
         </div>
 
@@ -104,10 +133,18 @@ export function NewBeanForm({ onClose, onSaved }: Props) {
               required style={styles.input} placeholder="250" />
           </Field>
 
+          {isEdit && (
+            <Field label="Remaining (g) — can only be reduced">
+              <input type="number" step="1" min="0" value={remaining}
+                onChange={e => setRemaining(e.target.value)}
+                style={styles.input} placeholder="0" />
+            </Field>
+          )}
+
           {error && <p style={{ color: 'var(--color-error)', fontSize: '0.875rem' }}>{error}</p>}
 
           <button type="submit" disabled={loading} style={styles.submitBtn}>
-            {loading ? 'Saving…' : 'Add to inventory'}
+            {loading ? 'Saving…' : isEdit ? 'Save changes' : 'Add to inventory'}
           </button>
         </form>
       </div>
