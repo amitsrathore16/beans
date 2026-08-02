@@ -50,15 +50,6 @@ export function getExtractionStatus(
   return delta > 0 ? 'over' : 'under'
 }
 
-function computeIdealYield(dose: string, ratio: string): number | null {
-  const doseNum = parseFloat(dose)
-  const parts = ratio.split(':')
-  if (parts.length !== 2) return null
-  const denominator = parseFloat(parts[1])
-  if (isNaN(doseNum) || isNaN(denominator) || denominator === 0) return null
-  return parseFloat((doseNum * denominator).toFixed(1))
-}
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface LogPrefill {
@@ -141,7 +132,14 @@ export function NewLogForm({ onClose, onSaved, prefill }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
 
-  const idealYield = useMemo(() => computeIdealYield(doseG, coffeeWaterRatio), [doseG, coffeeWaterRatio])
+  const idealYield = useMemo(() => {
+    const doseNum = parseFloat(doseG)
+    const parts = coffeeWaterRatio.split(':')
+    if (parts.length !== 2) return null
+    const denominator = parseFloat(parts[1])
+    if (isNaN(doseNum) || isNaN(denominator) || denominator === 0) return null
+    return parseFloat((doseNum * denominator).toFixed(1))
+  }, [doseG, coffeeWaterRatio])
   const extractionStatus = getExtractionStatus(
     actualYieldG ? parseFloat(actualYieldG) : undefined,
     idealYield ?? undefined,

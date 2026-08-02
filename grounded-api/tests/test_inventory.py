@@ -30,6 +30,8 @@ def _fake_db(beans=None, events_inserted=None):
         def select(self, *a): return self
         def eq(self, *a): return self
         def is_(self, *a): return self
+        def ilike(self, *a): return self
+        def limit(self, *a): return self
 
         def execute(self):
             r = MagicMock()

@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from models import (
     LogSaveRequest, LogSaveResponse, DuplicateRequest, DuplicateResponse,
     InventoryMatch, LogType,
 )
 from dependencies import get_current_user
-from database import get_supabase
+from database import get_supabase, find_bean_by_name
+from limiter import limiter
 
 router = APIRouter(prefix="/api/v1/logs", tags=["logs"])
 
@@ -12,7 +13,8 @@ SENSORY_FIELDS = ["sensory_profile", "rating", "notes"]
 
 
 @router.post("", response_model=LogSaveResponse)
-async def save_log(payload: LogSaveRequest, user_id: str = Depends(get_current_user)):
+@limiter.limit("120/minute")
+async def save_log(request: Request, payload: LogSaveRequest, user_id: str = Depends(get_current_user)):
     db = get_supabase()
     data = payload.log.model_dump(exclude_none=True)
     data["user_id"] = user_id
@@ -25,14 +27,28 @@ async def save_log(payload: LogSaveRequest, user_id: str = Depends(get_current_u
     inventory_match = None
 
     if payload.log.log_type == LogType.home and payload.deduct_inventory:
-        match = _match_bean(db, user_id, payload.log.coffee_name, payload.log.dose_g or 0)
+        if payload.confirmed_bean_id:
+            # User explicitly confirmed a specific bean — fetch by ID (with ownership check)
+            res = (
+                db.table("beans")
+                .select("id, name, remaining_weight_g")
+                .eq("id", payload.confirmed_bean_id)
+                .eq("user_id", user_id)
+                .is_("deleted_at", "null")
+                .execute()
+            )
+            match = res.data[0] if res.data else None
+        else:
+            match = find_bean_by_name(db, user_id, payload.log.coffee_name)
+
         if match:
+            dose = payload.log.dose_g or 0
             inventory_match = InventoryMatch(
                 bean_id=match["id"],
                 bean_name=match["name"],
                 remaining_before_g=match["remaining_weight_g"],
-                remaining_after_g=match["remaining_weight_g"] - (payload.log.dose_g or 0),
-                low_stock_warning=(match["remaining_weight_g"] - (payload.log.dose_g or 0)) < 50,
+                remaining_after_g=match["remaining_weight_g"] - dose,
+                low_stock_warning=(match["remaining_weight_g"] - dose) < 50,
             )
 
     return LogSaveResponse(log_id=log_id, inventory_match=inventory_match)
@@ -62,11 +78,3 @@ async def duplicate_log(log_id: str, payload: DuplicateRequest, user_id: str = D
         raise HTTPException(status_code=500, detail="Failed to create duplicate log")
 
     return DuplicateResponse(new_log_id=insert_result.data[0]["id"], mode=payload.mode)
-
-
-def _match_bean(db, user_id: str, coffee_name: str, dose_g: float):
-    result = db.table("beans").select("*").eq("user_id", user_id).is_("deleted_at", "null").execute()
-    for bean in result.data or []:
-        if bean["name"].lower() == coffee_name.lower():
-            return bean
-    return None
