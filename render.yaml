@@ -2,6 +2,7 @@ services:
   - type: web
     name: grounded-api
     runtime: python
+    plan: free          # free instance; spins down after ~15 min idle (cold start on next request). Bump to `starter` for always-on.
     rootDir: grounded-api
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
@@ -12,6 +13,13 @@ services:
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
       - key: SUPABASE_JWT_SECRET
+        sync: false
+      # HS256 (legacy shared secret) or ES256/RS256 (asymmetric signing keys, verified via JWKS).
+      # Supabase projects with signing keys enabled use ES256 — check Auth → JWT settings.
+      - key: SUPABASE_JWT_ALG
+        sync: false
+      # Comma-separated frontend origins for CORS, e.g. https://grounded.vercel.app
+      - key: ALLOWED_ORIGINS
         sync: false
       - key: ENVIRONMENT
         value: production
