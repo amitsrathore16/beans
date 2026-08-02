@@ -1,6 +1,6 @@
 import { useState, useMemo, type FormEvent } from 'react'
-import { createLog } from '../hooks/useLogs'
-import type { InventoryMatch, SensoryProfile } from '../hooks/useLogs'
+import { createLog, updateLog } from '../hooks/useLogs'
+import type { InventoryMatch, SensoryProfile, Log } from '../hooks/useLogs'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -77,57 +77,61 @@ interface Props {
   onClose: () => void
   onSaved: (logId: string, match: InventoryMatch | null) => void
   prefill?: LogPrefill
+  editLog?: Log            // when set, the form edits this log instead of creating
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function NewLogForm({ onClose, onSaved, prefill }: Props) {
-  const [logType, setLogType] = useState<'home' | 'cafe'>('home')
+export function NewLogForm({ onClose, onSaved, prefill, editLog }: Props) {
+  const isEdit = !!editLog
+  const src: LogPrefill = editLog ?? prefill ?? {}
+
+  const [logType, setLogType] = useState<'home' | 'cafe'>(editLog?.log_type ?? 'home')
 
   // Group A — Product
-  const [roaster, setRoaster]         = useState(prefill?.roaster ?? '')
-  const [coffeeName, setCoffeeName]   = useState(prefill?.coffee_name ?? '')
-  const [coffeeType, setCoffeeType]   = useState(prefill?.coffee_type ?? '')
+  const [roaster, setRoaster]         = useState(src.roaster ?? '')
+  const [coffeeName, setCoffeeName]   = useState(src.coffee_name ?? '')
+  const [coffeeType, setCoffeeType]   = useState(src.coffee_type ?? '')
 
   // Group B — Origin
-  const [originCountry, setOriginCountry] = useState(prefill?.origin_country ?? '')
-  const [originRegion, setOriginRegion]   = useState(prefill?.origin_region ?? '')
+  const [originCountry, setOriginCountry] = useState(src.origin_country ?? '')
+  const [originRegion, setOriginRegion]   = useState(src.origin_region ?? '')
 
   // Group C — Bean Profile
-  const [species, setSpecies]             = useState(prefill?.species ?? '')
-  const [processMethod, setProcessMethod] = useState(prefill?.process_method ?? '')
-  const [varietal, setVarietal]           = useState(prefill?.varietal ?? '')
+  const [species, setSpecies]             = useState(src.species ?? '')
+  const [processMethod, setProcessMethod] = useState(src.process_method ?? '')
+  const [varietal, setVarietal]           = useState(src.varietal ?? '')
 
   // Group D — Roast Profile
-  const [roastLevel, setRoastLevel] = useState(prefill?.roast_level ?? '')
-  const [roastDate, setRoastDate]   = useState(prefill?.roast_date ?? '')
+  const [roastLevel, setRoastLevel] = useState(src.roast_level ?? '')
+  const [roastDate, setRoastDate]   = useState(src.roast_date ?? '')
 
   // Equipment
-  const [brewMethod, setBrewMethod] = useState(prefill?.brew_method ?? '')
-  const [equipment, setEquipment]   = useState(prefill?.equipment ?? '')
+  const [brewMethod, setBrewMethod] = useState(src.brew_method ?? '')
+  const [equipment, setEquipment]   = useState(src.equipment ?? '')
 
   // Grind
-  const [grinder, setGrinder]     = useState('')
-  const [grindSize, setGrindSize] = useState(prefill?.grind_size ?? '')
+  const [grinder, setGrinder]     = useState(editLog?.grinder ?? '')
+  const [grindSize, setGrindSize] = useState(src.grind_size ?? '')
 
-  // Extraction
-  const [doseG, setDoseG]                       = useState(prefill?.dose_g?.toString() ?? '')
-  const [coffeeWaterRatio, setCoffeeWaterRatio] = useState(prefill?.coffee_water_ratio ?? '')
-  const [actualYieldG, setActualYieldG]         = useState(prefill?.actual_yield_g?.toString() ?? '')
-  const [brewTimeS, setBrewTimeS]               = useState(prefill?.brew_time_s?.toString() ?? '')
-  const [waterTempC, setWaterTempC]             = useState(prefill?.water_temp_c?.toString() ?? '')
+  // Extraction — locked (read-only) when editing
+  const [doseG, setDoseG]                       = useState(src.dose_g?.toString() ?? '')
+  const [coffeeWaterRatio, setCoffeeWaterRatio] = useState(src.coffee_water_ratio ?? '')
+  const [actualYieldG, setActualYieldG]         = useState(src.actual_yield_g?.toString() ?? '')
+  const [brewTimeS, setBrewTimeS]               = useState(src.brew_time_s?.toString() ?? '')
+  const [waterTempC, setWaterTempC]             = useState(src.water_temp_c?.toString() ?? '')
 
   // Sensory
-  const [sensoryProfile, setSensoryProfile] = useState<SensoryProfile>({})
+  const [sensoryProfile, setSensoryProfile] = useState<SensoryProfile>(editLog?.sensory_profile ?? {})
 
   // Overall
-  const [rating, setRating] = useState<number | ''>('')
-  const [notes, setNotes]   = useState('')
+  const [rating, setRating] = useState<number | ''>(editLog?.rating ?? '')
+  const [notes, setNotes]   = useState(editLog?.notes ?? '')
 
   // Café-only
-  const [cafeName, setCafeName]       = useState('')
-  const [location, setLocation]       = useState('')
-  const [wouldReturn, setWouldReturn] = useState('')
+  const [cafeName, setCafeName]       = useState(editLog?.cafe_name ?? '')
+  const [location, setLocation]       = useState(editLog?.location ?? '')
+  const [wouldReturn, setWouldReturn] = useState(editLog?.would_return ?? '')
 
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
@@ -172,38 +176,48 @@ export function NewLogForm({ onClose, onSaved, prefill }: Props) {
     e.preventDefault()
     setError(null)
     setLoading(true)
+    // Fields shared by create and edit. The extraction/quantity block is NOT
+    // here — it only exists on create (locked on edit, rejected by the backend).
+    const common = {
+      roaster: roaster || undefined,
+      coffee_name: coffeeName.trim(),
+      coffee_type: coffeeType || undefined,
+      origin_country: originCountry || undefined,
+      origin_region: originRegion || undefined,
+      species: species || undefined,
+      process_method: processMethod || undefined,
+      varietal: varietal || undefined,
+      roast_level: roastLevel || undefined,
+      roast_date: roastDate || undefined,
+      brew_method: brewMethod || undefined,
+      equipment: equipment || undefined,
+      grinder: grinder || undefined,
+      grind_size: grindSize || undefined,
+      brew_time_s: brewTimeS ? Number(brewTimeS) : undefined,
+      water_temp_c: waterTempC ? Number(waterTempC) : undefined,
+      sensory_profile: Object.keys(sensoryProfile).length ? sensoryProfile : undefined,
+      rating: rating !== '' ? Number(rating) : undefined,
+      notes: notes || undefined,
+      ...(logType === 'cafe' ? {
+        cafe_name: cafeName || undefined,
+        location: location || undefined,
+        would_return: (wouldReturn as 'Yes' | 'Maybe' | 'No') || undefined,
+      } : {}),
+    }
     try {
+      if (isEdit) {
+        await updateLog(editLog!.id, common)
+        onSaved(editLog!.id, null)
+        return
+      }
       const result = await createLog({
         log: {
           log_type: logType,
-          roaster: roaster || undefined,
-          coffee_name: coffeeName.trim(),
-          coffee_type: coffeeType || undefined,
-          origin_country: originCountry || undefined,
-          origin_region: originRegion || undefined,
-          species: species || undefined,
-          process_method: processMethod || undefined,
-          varietal: varietal || undefined,
-          roast_level: roastLevel || undefined,
-          roast_date: roastDate || undefined,
-          brew_method: brewMethod || undefined,
-          equipment: equipment || undefined,
-          grinder: grinder || undefined,
-          grind_size: grindSize || undefined,
+          ...common,
           dose_g: doseG ? Number(doseG) : undefined,
           coffee_water_ratio: coffeeWaterRatio || undefined,
           ideal_yield_g: idealYield ?? undefined,
           actual_yield_g: actualYieldG ? Number(actualYieldG) : undefined,
-          brew_time_s: brewTimeS ? Number(brewTimeS) : undefined,
-          water_temp_c: waterTempC ? Number(waterTempC) : undefined,
-          sensory_profile: Object.keys(sensoryProfile).length ? sensoryProfile : undefined,
-          rating: rating !== '' ? Number(rating) : undefined,
-          notes: notes || undefined,
-          ...(logType === 'cafe' ? {
-            cafe_name: cafeName || undefined,
-            location: location || undefined,
-            would_return: (wouldReturn as 'Yes' | 'Maybe' | 'No') || undefined,
-          } : {}),
         },
         deduct_inventory: logType === 'home',
       })
@@ -219,16 +233,17 @@ export function NewLogForm({ onClose, onSaved, prefill }: Props) {
     <div style={s.overlay}>
       <div style={s.sheet}>
         <div style={s.sheetHeader}>
-          <h2 style={s.title}>New log</h2>
+          <h2 style={s.title}>{isEdit ? 'Edit log' : 'New log'}</h2>
           <button onClick={onClose} style={s.closeBtn}>×</button>
         </div>
 
         <form onSubmit={handleSubmit} style={s.form}>
-          {/* Log type toggle */}
+          {/* Log type toggle — locked when editing (type can't change) */}
           <div style={s.toggle}>
             {(['home', 'cafe'] as const).map(type => (
-              <button key={type} type="button" onClick={() => setLogType(type)}
-                style={{ ...s.toggleBtn, ...(logType === type ? s.toggleActive : {}) }}>
+              <button key={type} type="button" disabled={isEdit} onClick={() => setLogType(type)}
+                style={{ ...s.toggleBtn, ...(logType === type ? s.toggleActive : {}),
+                  ...(isEdit ? { opacity: 0.6, cursor: 'not-allowed' } : {}) }}>
                 {type === 'home' ? 'Home brew' : 'Café'}
               </button>
             ))}
@@ -322,15 +337,15 @@ export function NewLogForm({ onClose, onSaved, prefill }: Props) {
               </div>
 
               {/* ── Extraction ──────────────────────────────────────────── */}
-              <SectionDivider label="Extraction" />
+              <SectionDivider label={isEdit ? 'Extraction (locked)' : 'Extraction'} />
               <div style={s.row}>
                 <Field label="Dose (g)">
                   <input type="number" step="0.1" value={doseG} onChange={e => setDoseG(e.target.value)}
-                    style={s.input} placeholder="18" />
+                    disabled={isEdit} style={{ ...s.input, ...(isEdit ? s.readOnly : {}) }} placeholder="18" />
                 </Field>
                 <Field label="Coffee:Water ratio">
                   <input value={coffeeWaterRatio} onChange={e => setCoffeeWaterRatio(e.target.value)}
-                    style={s.input} placeholder="1:15" />
+                    disabled={isEdit} style={{ ...s.input, ...(isEdit ? s.readOnly : {}) }} placeholder="1:15" />
                 </Field>
               </div>
               <div style={s.row}>
@@ -341,7 +356,7 @@ export function NewLogForm({ onClose, onSaved, prefill }: Props) {
                 </Field>
                 <Field label="Actual yield (g)">
                   <input type="number" step="0.1" value={actualYieldG} onChange={e => setActualYieldG(e.target.value)}
-                    style={s.input} placeholder="36" />
+                    disabled={isEdit} style={{ ...s.input, ...(isEdit ? s.readOnly : {}) }} placeholder="36" />
                 </Field>
               </div>
               {extractionStatus && <ExtractionBadge status={extractionStatus} />}
@@ -424,7 +439,7 @@ export function NewLogForm({ onClose, onSaved, prefill }: Props) {
 
           {error && <p style={{ color: 'var(--color-error)', fontSize: '0.875rem' }}>{error}</p>}
           <button type="submit" disabled={loading} style={s.submitBtn}>
-            {loading ? 'Saving…' : 'Save log'}
+            {loading ? 'Saving…' : isEdit ? 'Save changes' : 'Save log'}
           </button>
         </form>
       </div>

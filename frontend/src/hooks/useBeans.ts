@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { apiFetch } from '../lib/apiClient'
 
 export interface Bean {
   id: string
@@ -89,6 +90,27 @@ export async function createBean(payload: BeanCreatePayload): Promise<Bean> {
 
   if (error) throw new Error(error.message)
   return data as Bean
+}
+
+// Editable bean metadata — NOT remaining_weight_g (that goes through the
+// decrease-only /inventory/adjust endpoint so every change is ledgered).
+export type BeanMetaPayload = Partial<Pick<Bean,
+  'name' | 'roaster' | 'origin' | 'roast_level' | 'process_method' |
+  'roast_date' | 'opened_date' | 'total_weight_g'
+>>
+
+export async function updateBeanMeta(id: string, payload: BeanMetaPayload): Promise<void> {
+  const { error } = await supabase.from('beans').update(payload).eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+// Quantity change routes through the backend: decrease-only, and it writes a
+// manual_adjustment ledger row. Throws with the API's message on an increase.
+export async function adjustBeanQuantity(beanId: string, newWeightG: number): Promise<void> {
+  await apiFetch('/inventory/adjust', {
+    method: 'POST',
+    body: JSON.stringify({ bean_id: beanId, new_weight_g: newWeightG }),
+  })
 }
 
 export function useSoftDelete(table: string) {

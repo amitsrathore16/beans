@@ -1,16 +1,17 @@
 import { useState } from 'react'
 import { getFreshness, FRESHNESS_STYLE } from '../hooks/useBeans'
 import type { Bean } from '../hooks/useBeans'
-import { useBeanLogs } from '../hooks/useLogs'
+import { useBeanHistory } from '../hooks/useLogs'
 
 interface Props {
   bean: Bean
   onDelete: (id: string) => void
+  onEdit: (bean: Bean) => void
 }
 
-export function BeanCard({ bean, onDelete }: Props) {
+export function BeanCard({ bean, onDelete, onEdit }: Props) {
   const [expanded, setExpanded] = useState(false)
-  const { logs, loading, error } = useBeanLogs(bean.id, expanded)
+  const { entries, loading, error } = useBeanHistory(bean.id, expanded)
   const freshness = getFreshness(bean.roast_date)
   const pct = Math.min(100, Math.round((bean.remaining_weight_g / bean.total_weight_g) * 100))
   const lowStock = bean.remaining_weight_g < 50
@@ -34,9 +35,14 @@ export function BeanCard({ bean, onDelete }: Props) {
             {[bean.origin, bean.roast_level, bean.process_method].filter(Boolean).join(' · ')}
           </p>
         </div>
-        <button onClick={() => onDelete(bean.id)} style={styles.deleteBtn} aria-label="Delete bean">
-          ×
-        </button>
+        <div style={styles.actions}>
+          <button onClick={() => onEdit(bean)} style={styles.editBtn} aria-label="Edit bean">
+            Edit
+          </button>
+          <button onClick={() => onDelete(bean.id)} style={styles.deleteBtn} aria-label="Delete bean">
+            ×
+          </button>
+        </div>
       </div>
 
       <div style={styles.weightRow}>
@@ -67,7 +73,7 @@ export function BeanCard({ bean, onDelete }: Props) {
       )}
 
       <button onClick={() => setExpanded(e => !e)} style={styles.brewsToggle}>
-        {expanded ? 'Hide brews' : 'View brews'} {expanded ? '▲' : '▼'}
+        {expanded ? 'Hide history' : 'View history'} {expanded ? '▲' : '▼'}
       </button>
 
       {expanded && (
@@ -75,22 +81,29 @@ export function BeanCard({ bean, onDelete }: Props) {
           {loading ? (
             <p style={styles.brewsEmpty}>Loading…</p>
           ) : error ? (
-            <p style={{ ...styles.brewsEmpty, color: 'var(--color-error)' }}>Couldn't load brews</p>
-          ) : logs.length === 0 ? (
-            <p style={styles.brewsEmpty}>No brews deducted from this bag yet</p>
+            <p style={{ ...styles.brewsEmpty, color: 'var(--color-error)' }}>Couldn't load history</p>
+          ) : entries.length === 0 ? (
+            <p style={styles.brewsEmpty}>No inventory changes yet</p>
           ) : (
-            logs.map(log => (
-              <div key={log.id} style={styles.brewRow}>
-                <span style={styles.brewName}>
-                  {[log.brew_method, log.coffee_name].filter(Boolean).join(' · ')}
-                </span>
-                <span style={styles.brewMeta}>
-                  {log.dose_g != null && `${log.dose_g}g`}
-                  {log.rating != null && ` · ${'★'.repeat(log.rating)}`}
-                  {` · ${new Date(log.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`}
-                </span>
-              </div>
-            ))
+            entries.map(entry => {
+              const isManual = entry.source === 'manual_adjustment'
+              return (
+                <div key={entry.id} style={styles.brewRow}>
+                  <span style={styles.brewName}>
+                    <span style={{ ...styles.sourceTag, ...(isManual ? styles.sourceManual : styles.sourceBrew) }}>
+                      {isManual ? 'Manual' : 'Brew'}
+                    </span>
+                    {isManual
+                      ? 'Manual adjustment'
+                      : [entry.log?.brew_method, entry.log?.coffee_name].filter(Boolean).join(' · ') || 'Brew'}
+                  </span>
+                  <span style={styles.brewMeta}>
+                    {`${entry.delta_g}g`}
+                    {` · ${new Date(entry.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`}
+                  </span>
+                </div>
+              )
+            })
           )}
         </div>
       )}
@@ -129,6 +142,17 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--color-espresso)',
   },
   sub: { fontSize: '0.8rem', color: 'var(--color-muted)' },
+  actions: { display: 'flex', alignItems: 'center', gap: 'var(--space-2)' },
+  editBtn: {
+    background: 'none',
+    border: '1px solid var(--color-border)',
+    color: 'var(--color-caramel)',
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    padding: '3px 10px',
+    borderRadius: '99px',
+    cursor: 'pointer',
+  },
   deleteBtn: {
     background: 'none',
     border: 'none',
@@ -138,6 +162,13 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 0,
     cursor: 'pointer',
   },
+  sourceTag: {
+    fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase',
+    letterSpacing: '0.04em', padding: '1px 6px', borderRadius: '99px',
+    marginRight: '6px', verticalAlign: 'middle',
+  },
+  sourceBrew:   { background: '#e8f0d8', color: '#4a5a2a' },
+  sourceManual: { background: '#f0e0d0', color: '#8a5a2a' },
   weightRow: {
     display: 'flex',
     justifyContent: 'space-between',

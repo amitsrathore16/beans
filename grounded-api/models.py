@@ -116,3 +116,39 @@ class InventoryDeductResponse(BaseModel):
     success: bool
     remaining_weight_g: float
     low_stock_warning: bool
+
+
+# Editable log fields. Deliberately omits the extraction/quantity block
+# (dose_g, coffee_water_ratio, ideal_yield_g, actual_yield_g) and immutables
+# (log_type, duplicated_from) — extra="forbid" makes an attempt to PATCH any of
+# those a 422, so the "quantity is locked on edit" rule is enforced server-side,
+# not just in the UI.
+class LogUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    roaster:        Optional[str] = Field(default=None, max_length=200)
+    coffee_name:    Optional[str] = Field(default=None, min_length=1, max_length=200)
+    coffee_type:    Optional[str] = Field(default=None, max_length=50)
+    origin_country: Optional[str] = Field(default=None, max_length=100)
+    origin_region:  Optional[str] = Field(default=None, max_length=200)
+    species:        Optional[str] = Field(default=None, max_length=100)
+    process_method: Optional[str] = Field(default=None, max_length=100)
+    varietal:       Optional[str] = Field(default=None, max_length=200)
+    roast_level:    Optional[str] = Field(default=None, max_length=50)
+    roast_date:     Optional[str] = Field(default=None, max_length=10)
+    brew_method:    Optional[str] = Field(default=None, max_length=100)
+    equipment:      Optional[str] = Field(default=None, max_length=200)
+    grinder:        Optional[str] = Field(default=None, max_length=200)
+    grind_size:     Optional[str] = Field(default=None, max_length=50)
+    brew_time_s:    Optional[int]   = None
+    water_temp_c:   Optional[float] = None
+    sensory_profile: Optional[SensoryProfile] = None
+    rating:         Optional[int] = Field(default=None, ge=1, le=5)
+    notes:          Optional[str] = Field(default=None, max_length=5000)
+    cafe_name:      Optional[str] = Field(default=None, max_length=200)
+    location:       Optional[str] = Field(default=None, max_length=500)
+    would_return:   Optional[str] = None
+
+
+class InventoryAdjustRequest(BaseModel):
+    bean_id:      str   = Field(max_length=36)
+    new_weight_g: float = Field(ge=0)   # absolute new remaining weight; must be < current (decrease only)

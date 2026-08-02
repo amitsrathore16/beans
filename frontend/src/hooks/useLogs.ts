@@ -108,20 +108,21 @@ function useLogs(logType?: 'home' | 'cafe') {
 export function useHomeLogs() { return useLogs('home') }
 export function useCafeLogs() { return useLogs('cafe') }
 
-// Just the columns the bean card's brew list renders — avoids over-fetching
-// full log rows (sensory_profile jsonb, notes, …) through the embed.
-export type BeanLog = Pick<
-  Log,
-  'id' | 'coffee_name' | 'brew_method' | 'dose_g' | 'rating' | 'created_at' | 'deleted_at'
->
+// One row of a bean's inventory history — every weight change is an
+// inventory_events row. `source` differentiates brew deductions ('brew_save',
+// with a linked log) from manual edits ('manual_adjustment', log = null).
+export interface BeanHistoryEntry {
+  id: string
+  created_at: string
+  delta_g: number
+  source: string
+  log: { coffee_name: string; brew_method: string | null } | null
+}
 
-const BEAN_LOG_COLS = 'id,coffee_name,brew_method,dose_g,rating,created_at,deleted_at'
-
-// Related brew logs for one bean — the only bean↔log link is the inventory_events
-// ledger (confirmed deductions), so we read through it. Lazy-fetched: only runs
-// when `enabled` (i.e. the card is expanded).
-export function useBeanLogs(beanId: string, enabled: boolean) {
-  const [logs, setLogs] = useState<BeanLog[]>([])
+// Inventory history for one bean. Lazy-fetched: only runs when `enabled`
+// (i.e. the card is expanded).
+export function useBeanHistory(beanId: string, enabled: boolean) {
+  const [entries, setEntries] = useState<BeanHistoryEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -132,26 +133,23 @@ export function useBeanLogs(beanId: string, enabled: boolean) {
     setError(null)
     supabase
       .from('inventory_events')
-      .select(`log:logs(${BEAN_LOG_COLS})`)
+      .select('id, created_at, delta_g, source, log:logs(coffee_name, brew_method)')
       .eq('bean_id', beanId)
-      .not('log_id', 'is', null)
       .order('created_at', { ascending: false })
       .then(({ data, error }) => {
         if (cancelled) return
         if (error) {
           setError(error.message)
         } else {
-          // PostgREST's embed-alias return type isn't inferable here, so cast the
-          // known shape; if the embed shape is ever wrong this fails at runtime.
-          const rows = (data ?? []) as unknown as { log: BeanLog | null }[]
-          setLogs(rows.map(r => r.log).filter((l): l is BeanLog => !!l && !l.deleted_at))
+          // PostgREST's embed-alias return type isn't inferable here, so cast the known shape.
+          setEntries((data ?? []) as unknown as BeanHistoryEntry[])
         }
         setLoading(false)
       })
     return () => { cancelled = true }
   }, [beanId, enabled])
 
-  return { logs, loading, error }
+  return { entries, loading, error }
 }
 
 export function useSoftDeleteLog() { return useSoftDelete('logs') }
@@ -167,6 +165,20 @@ export async function createLog(payload: LogCreatePayload): Promise<LogSaveRespo
     method: 'POST',
     body: JSON.stringify(payload),
   })
+}
+
+// Editable log fields — the quantity/extraction block (dose_g, ratio, yields)
+// is intentionally excluded and locked; the backend rejects it too.
+export type LogUpdatePayload = Partial<Pick<Log,
+  'roaster' | 'coffee_name' | 'coffee_type' | 'origin_country' | 'origin_region' |
+  'species' | 'process_method' | 'varietal' | 'roast_level' | 'roast_date' |
+  'brew_method' | 'equipment' | 'grinder' | 'grind_size' | 'brew_time_s' |
+  'water_temp_c' | 'sensory_profile' | 'rating' | 'notes' |
+  'cafe_name' | 'location' | 'would_return'
+>>
+
+export async function updateLog(id: string, payload: LogUpdatePayload): Promise<void> {
+  await apiFetch(`/logs/${id}`, { method: 'PATCH', body: JSON.stringify(payload) })
 }
 
 export type DuplicateMode = 'exact' | 'log_with_changes'

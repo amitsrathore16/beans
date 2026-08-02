@@ -5,10 +5,11 @@ import { getExtractionStatus } from './NewLogForm'
 interface Props {
   log: Log
   onDelete: (id: string) => void
+  onEdit: (log: Log) => void
   onDuplicate?: (id: string, mode: DuplicateMode) => void
 }
 
-export function LogCard({ log, onDelete, onDuplicate }: Props) {
+export function LogCard({ log, onDelete, onEdit, onDuplicate }: Props) {
   const isHome = log.log_type === 'home'
   const [showBrewAgain, setShowBrewAgain] = useState(false)
 
@@ -29,7 +30,10 @@ export function LogCard({ log, onDelete, onDuplicate }: Props) {
         </div>
         <div style={s.right}>
           {log.rating != null && <Stars rating={log.rating} />}
-          <button onClick={() => onDelete(log.id)} style={s.deleteBtn} aria-label="Delete log">×</button>
+          <div style={s.headerActions}>
+            <button onClick={() => onEdit(log)} style={s.editBtn} aria-label="Edit log">Edit</button>
+            <button onClick={() => onDelete(log.id)} style={s.deleteBtn} aria-label="Delete log">×</button>
+          </div>
         </div>
       </div>
 
@@ -146,6 +150,11 @@ const s: Record<string, React.CSSProperties> = {
   name: { fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--color-espresso)' },
   subheading: { fontSize: '0.8rem', color: 'var(--color-muted)', marginTop: '2px' },
   right: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--space-2)', flexShrink: 0 },
+  headerActions: { display: 'flex', alignItems: 'center', gap: 'var(--space-2)' },
+  editBtn: {
+    background: 'none', border: '1px solid var(--color-border)', color: 'var(--color-caramel)',
+    fontSize: '0.75rem', fontWeight: 600, padding: '3px 10px', borderRadius: '99px', cursor: 'pointer',
+  },
   deleteBtn: { background: 'none', border: 'none', color: 'var(--color-muted)', fontSize: '1.2rem', lineHeight: 1, padding: 0 },
   chipRow: {
     display: 'flex', gap: 'var(--space-2)', overflowX: 'auto',
