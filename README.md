@@ -2,15 +2,15 @@
 
 A mobile-first coffee companion for tracking home brews, café tastings, and bean inventory. Log every cup, monitor bean freshness, and watch your stock update in real time as you brew.
 
-**Stack:** React 18 + Vite + TypeScript · FastAPI (Python 3.12) · Supabase (PostgreSQL + Auth + Realtime)
+**Stack:** React 19 + Vite + TypeScript · FastAPI (Python 3.9+) · Supabase (PostgreSQL + Auth + Realtime)
 
 ---
 
 ## Features
 
-- **Home brews** — structured coffee identity (roaster, origin, species, process, roast date), brew method → equipment cascade, dose/ratio/yield with extraction indicator, SCA sensory profile
+- **Home brews** — structured coffee identity (roaster, origin, species, process, roast date), brew method → equipment cascade, dose/ratio/yield with extraction indicator, SCA sensory profile; edit, delete, or "brew again" any entry
 - **Café tastings** — record café visits with ratings, sensory notes, and would-return flag
-- **Bean inventory** — track bag weight, roast date, and freshness; weight deducts automatically after each brew
+- **Bean inventory** — track bag weight, roast date, and freshness; a matching bean's stock is deducted (with confirmation) after each brew, plus manual decrease-only adjustments and a per-bean deduction/adjustment history
 - **Real-time sync** — inventory updates across tabs via Supabase Realtime
 
 ---
@@ -85,8 +85,14 @@ Create `grounded-api/.env`:
 SUPABASE_URL=http://127.0.0.1:54321
 SUPABASE_SERVICE_ROLE_KEY=<service_role key from supabase start>
 SUPABASE_JWT_SECRET=<JWT secret from supabase start>
+SUPABASE_JWT_ALG=ES256
 ENVIRONMENT=development
 ```
+
+> `SUPABASE_JWT_ALG` **must match** how your Supabase project signs user tokens, or every
+> authenticated request 401s. Local `supabase start` (and new cloud projects) use asymmetric
+> signing keys → `ES256`; legacy projects using the shared JWT secret → `HS256`. Check with
+> `curl http://127.0.0.1:54321/auth/v1/.well-known/jwks.json` — `ES256` keys means `ES256`.
 
 Start the API (from inside `grounded-api/`):
 
