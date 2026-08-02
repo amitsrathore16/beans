@@ -5,10 +5,12 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from dotenv import load_dotenv
 
+# Must run before importing first-party modules: several of them (e.g. dependencies.py)
+# read env vars at import time, so .env has to be loaded first.
+load_dotenv()
+
 from limiter import limiter
 from routers import logs, inventory
-
-load_dotenv()
 
 # Build the CORS origin allowlist from explicit environment config.
 # ALLOWED_ORIGINS: comma-separated list of additional production/preview origins.
