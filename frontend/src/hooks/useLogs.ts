@@ -177,8 +177,31 @@ export type LogUpdatePayload = Partial<Pick<Log,
   'cafe_name' | 'location' | 'would_return'
 >>
 
-export async function updateLog(id: string, payload: LogUpdatePayload): Promise<void> {
-  await apiFetch(`/logs/${id}`, { method: 'PATCH', body: JSON.stringify(payload) })
+export interface ReattributionPreview {
+  from_bean_id: string
+  from_bean_name: string
+  to_bean_id: string | null
+  to_bean_name: string | null
+  dose_g: number
+}
+
+export interface LogUpdateResponse {
+  log_id: string
+  reattribution?: ReattributionPreview
+}
+
+// PATCH is two-phase for a home log whose coffee_name changes: the first call
+// returns a `reattribution` preview (and saves nothing); re-send with
+// confirmReattribution=true to persist the edit and move the deduction.
+export async function updateLog(
+  id: string,
+  payload: LogUpdatePayload,
+  confirmReattribution = false,
+): Promise<LogUpdateResponse> {
+  return apiFetch<LogUpdateResponse>(`/logs/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ log: payload, confirm_reattribution: confirmReattribution }),
+  })
 }
 
 export type DuplicateMode = 'exact' | 'log_with_changes'

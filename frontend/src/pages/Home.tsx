@@ -39,6 +39,7 @@ export function Home() {
     setEditLog(undefined)
     refetchHome()
     refetchCafe()
+    refetchBeans()   // an edit may have re-attributed a deduction across beans
     if (match) setPendingMatch({ match, logId })
   }
 

@@ -86,19 +86,21 @@ export function BeanCard({ bean, onDelete, onEdit }: Props) {
             <p style={styles.brewsEmpty}>No inventory changes yet</p>
           ) : (
             entries.map(entry => {
-              const isManual = entry.source === 'manual_adjustment'
+              const brewLabel = [entry.log?.brew_method, entry.log?.coffee_name].filter(Boolean).join(' · ') || 'Brew'
+              const kind =
+                entry.source === 'manual_adjustment'
+                  ? { tag: 'Manual', style: styles.sourceManual, label: 'Manual adjustment' }
+                  : entry.source === 'brew_edit_reverse'
+                    ? { tag: 'Edit', style: styles.sourceEdit, label: `Moved off — ${brewLabel}` }
+                    : { tag: 'Brew', style: styles.sourceBrew, label: brewLabel }
               return (
                 <div key={entry.id} style={styles.brewRow}>
                   <span style={styles.brewName}>
-                    <span style={{ ...styles.sourceTag, ...(isManual ? styles.sourceManual : styles.sourceBrew) }}>
-                      {isManual ? 'Manual' : 'Brew'}
-                    </span>
-                    {isManual
-                      ? 'Manual adjustment'
-                      : [entry.log?.brew_method, entry.log?.coffee_name].filter(Boolean).join(' · ') || 'Brew'}
+                    <span style={{ ...styles.sourceTag, ...kind.style }}>{kind.tag}</span>
+                    {kind.label}
                   </span>
                   <span style={styles.brewMeta}>
-                    {`${entry.delta_g}g`}
+                    {`${entry.delta_g > 0 ? '+' : ''}${entry.delta_g}g`}
                     {` · ${new Date(entry.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`}
                   </span>
                 </div>
@@ -169,6 +171,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   sourceBrew:   { background: '#e8f0d8', color: '#4a5a2a' },
   sourceManual: { background: '#f0e0d0', color: '#8a5a2a' },
+  sourceEdit:   { background: '#dbe4f0', color: '#2a4a7a' },
   weightRow: {
     display: 'flex',
     justifyContent: 'space-between',
