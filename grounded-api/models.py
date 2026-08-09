@@ -149,6 +149,28 @@ class LogUpdate(BaseModel):
     would_return:   Optional[str] = None
 
 
+class LogUpdateRequest(BaseModel):
+    log: LogUpdate
+    # Two-phase: first PATCH returns a reattribution preview; the client re-sends
+    # with this true to actually move the inventory deduction.
+    confirm_reattribution: bool = False
+
+
+class ReattributionPreview(BaseModel):
+    from_bean_id:   str
+    from_bean_name: str
+    to_bean_id:     Optional[str] = None   # None → edited name matched no bean (refund only)
+    to_bean_name:   Optional[str] = None
+    dose_g:         float
+
+
+class LogUpdateResponse(BaseModel):
+    log_id: str
+    # Present (and nothing saved yet) when a coffee_name edit needs the user to
+    # confirm moving the deduction to a different bean.
+    reattribution: Optional[ReattributionPreview] = None
+
+
 class InventoryAdjustRequest(BaseModel):
     bean_id:      str   = Field(max_length=36)
     new_weight_g: float = Field(ge=0)   # absolute new remaining weight; must be < current (decrease only)

@@ -1,6 +1,7 @@
 import { useState, useMemo, type FormEvent } from 'react'
 import { createLog, updateLog } from '../hooks/useLogs'
-import type { InventoryMatch, SensoryProfile, Log } from '../hooks/useLogs'
+import type { InventoryMatch, SensoryProfile, Log, ReattributionPreview } from '../hooks/useLogs'
+import { ReattributionModal } from './ReattributionModal'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -135,6 +136,7 @@ export function NewLogForm({ onClose, onSaved, prefill, editLog }: Props) {
 
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
+  const [reattribution, setReattribution] = useState<ReattributionPreview | null>(null)
 
   const idealYield = useMemo(() => {
     const doseNum = parseFloat(doseG)
@@ -172,13 +174,10 @@ export function NewLogForm({ onClose, onSaved, prefill, editLog }: Props) {
     }))
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-    setLoading(true)
-    // Fields shared by create and edit. The extraction/quantity block is NOT
-    // here — it only exists on create (locked on edit, rejected by the backend).
-    const common = {
+  // Fields shared by create and edit. The extraction/quantity block is NOT here
+  // — it only exists on create (locked on edit, rejected by the backend).
+  function buildCommon() {
+    return {
       roaster: roaster || undefined,
       coffee_name: coffeeName.trim(),
       coffee_type: coffeeType || undefined,
@@ -204,16 +203,29 @@ export function NewLogForm({ onClose, onSaved, prefill, editLog }: Props) {
         would_return: (wouldReturn as 'Yes' | 'Maybe' | 'No') || undefined,
       } : {}),
     }
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
     try {
       if (isEdit) {
-        await updateLog(editLog!.id, common)
+        const resp = await updateLog(editLog!.id, buildCommon())
+        // A coffee_name change on a deducted brew needs confirmation before the
+        // stock moves — hold the save and show the modal.
+        if (resp.reattribution) {
+          setReattribution(resp.reattribution)
+          setLoading(false)
+          return
+        }
         onSaved(editLog!.id, null)
         return
       }
       const result = await createLog({
         log: {
           log_type: logType,
-          ...common,
+          ...buildCommon(),
           dose_g: doseG ? Number(doseG) : undefined,
           coffee_water_ratio: coffeeWaterRatio || undefined,
           ideal_yield_g: idealYield ?? undefined,
@@ -227,6 +239,31 @@ export function NewLogForm({ onClose, onSaved, prefill, editLog }: Props) {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handleConfirmReattribution() {
+    setError(null)
+    setLoading(true)
+    try {
+      await updateLog(editLog!.id, buildCommon(), true)
+      onSaved(editLog!.id, null)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save log')
+      setReattribution(null)   // fall back to the form so the error shows
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (reattribution) {
+    return (
+      <ReattributionModal
+        preview={reattribution}
+        loading={loading}
+        onConfirm={handleConfirmReattribution}
+        onCancel={() => setReattribution(null)}
+      />
+    )
   }
 
   return (
