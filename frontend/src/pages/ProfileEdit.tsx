@@ -12,7 +12,7 @@ const MAX_AVATAR_BYTES = 2 * 1024 * 1024   // matches the bucket's file_size_lim
 
 // Doubles as first-time setup (no profile yet) and edit.
 export function ProfileEdit() {
-  const { user, profile, refreshProfile } = useAuth()
+  const { user, profile, refreshProfile, signOut } = useAuth()
   const navigate = useNavigate()
   const isSetup = !profile
   const { brewers, grinders } = useEquipmentSuggestions()
@@ -183,7 +183,10 @@ export function ProfileEdit() {
         <button type="submit" disabled={loading || uploading} style={s.button}>
           {loading ? 'Saving…' : isSetup ? 'Continue' : 'Save profile'}
         </button>
-        {!isSetup && <Link to={`/u/${profile.username}`} style={s.cancel}>Cancel</Link>}
+        {isSetup
+          // Setup gates every other page, so sign-out has to live here too.
+          ? <button type="button" onClick={signOut} style={{ ...s.linkBtn, ...s.cancel }}>Sign out</button>
+          : <Link to={`/u/${profile.username}`} style={s.cancel}>Cancel</Link>}
       </form>
     </div>
   )

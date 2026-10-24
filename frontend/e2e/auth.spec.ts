@@ -10,6 +10,7 @@ test.describe('Auth flow', () => {
     await expect(page.getByText('Home brews')).toBeVisible()
 
     // Sign out
+    await page.getByRole('link', { name: 'Profile' }).click()
     await page.getByRole('button', { name: 'Sign out' }).click()
     await expect(page).toHaveURL('/login')
 

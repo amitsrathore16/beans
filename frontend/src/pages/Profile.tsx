@@ -4,7 +4,7 @@ import { usePublicProfile } from '../hooks/useProfile'
 
 export function Profile() {
   const { username = '' } = useParams()
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const { profile, stats, loading, error } = usePublicProfile(username)
 
   if (loading) return <p style={s.center}>Loading…</p>
@@ -26,7 +26,12 @@ export function Profile() {
       <div style={s.card}>
         <div style={s.topRow}>
           <Link to="/" style={s.muted}>← Home</Link>
-          {isOwn && <Link to="/profile/edit" style={s.editBtn}>Edit profile</Link>}
+          {isOwn && (
+            <div style={s.actions}>
+              <Link to="/profile/edit" style={s.editBtn}>Edit profile</Link>
+              <button onClick={signOut} style={s.editBtn}>Sign out</button>
+            </div>
+          )}
         </div>
 
         <div style={s.head}>
@@ -101,9 +106,10 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex', flexDirection: 'column', gap: 'var(--space-6)',
   },
   topRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  actions: { display: 'flex', gap: 'var(--space-2)' },
   editBtn: {
     border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
-    padding: 'var(--space-2) var(--space-4)', fontSize: '0.8rem', color: 'var(--color-espresso)', textDecoration: 'none',
+    padding: 'var(--space-2) var(--space-4)', fontSize: '0.8rem', color: 'var(--color-espresso)', textDecoration: 'none', background: 'none',
   },
   head: { display: 'flex', gap: 'var(--space-4)', alignItems: 'center' },
   avatar: { width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 },

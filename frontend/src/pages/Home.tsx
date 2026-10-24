@@ -18,7 +18,7 @@ import { apiFetch } from '../lib/apiClient'
 type Tab = 'home' | 'cafe' | 'beans'
 
 export function Home() {
-  const { user, profile, signOut } = useAuth()
+  const { user, profile } = useAuth()
   const [tab, setTab] = useState<Tab>('home')
   const [showForm, setShowForm] = useState(false)
   const [logPrefill, setLogPrefill] = useState<LogPrefill | undefined>(undefined)
@@ -142,11 +142,8 @@ export function Home() {
     <div style={styles.page}>
       <header style={styles.header}>
         <h1 style={styles.logo}>Grounded</h1>
-        <div style={styles.headerActions}>
-          {/* Always shown: with no profile (or a failed lookup) it goes to setup, so a broken profile load is visible. */}
-          <Link to={profile ? `/u/${profile.username}` : '/profile/edit'} style={styles.signOut}>Profile</Link>
-          <button onClick={signOut} style={styles.signOut}>Sign out</button>
-        </div>
+        {/* Always shown: with no profile (or a failed lookup) it goes to setup, so a broken profile load is visible. */}
+        <Link to={profile ? `/u/${profile.username}` : '/profile/edit'} style={styles.profileLink}>Profile</Link>
       </header>
 
       <div style={styles.tabsWrapper} aria-hidden={showForm || undefined}>
@@ -255,9 +252,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 'var(--space-4) var(--space-6)',
     borderBottom: '1px solid var(--color-border)', background: '#fff',
   },
-  headerActions: { display: 'flex', gap: 'var(--space-2)', alignItems: 'center' },
   logo: { fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--color-espresso)' },
-  signOut: {
+  profileLink: {
     background: 'none', border: '1px solid var(--color-border)',
     borderRadius: 'var(--radius-md)', padding: 'var(--space-2) var(--space-4)',
     color: 'var(--color-muted)', fontSize: '0.8rem', textDecoration: 'none',

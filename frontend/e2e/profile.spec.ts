@@ -49,7 +49,6 @@ test.describe('Profile', () => {
     await page.getByRole('button', { name: 'Save profile' }).click()
     await expect(page).toHaveURL(`/u/${owner}`)
     await expect(page.getByText('Private')).toBeVisible()
-    await page.goto('/')
     await page.getByRole('button', { name: 'Sign out' }).click()
 
     // Second user: same username (different case) is rejected, then can't see the private profile.
