@@ -1,15 +1,10 @@
 import { test, expect } from '@playwright/test'
-
-const PASSWORD = 'TestPassword123!'
+import { registerWithProfile } from './helpers'
 
 test.describe('Log CRUD', () => {
   test.beforeEach(async ({ page }) => {
     const email = `e2e-logs+${Date.now()}@grounded.test`
-    await page.goto('/register')
-    await page.fill('input[type="email"]', email)
-    await page.fill('input[type="password"]', PASSWORD)
-    await page.click('button[type="submit"]')
-    await expect(page).toHaveURL('/')
+    await registerWithProfile(page, email)
   })
 
   test('add home brew log', async ({ page }) => {
