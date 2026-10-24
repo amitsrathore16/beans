@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useHomeLogs, useCafeLogs, useSoftDeleteLog, duplicateLog } from '../hooks/useLogs'
 import type { InventoryMatch, DuplicateMode, Log } from '../hooks/useLogs'
@@ -17,7 +18,7 @@ import { apiFetch } from '../lib/apiClient'
 type Tab = 'home' | 'cafe' | 'beans'
 
 export function Home() {
-  const { user, signOut } = useAuth()
+  const { user, profile, signOut } = useAuth()
   const [tab, setTab] = useState<Tab>('home')
   const [showForm, setShowForm] = useState(false)
   const [logPrefill, setLogPrefill] = useState<LogPrefill | undefined>(undefined)
@@ -141,7 +142,10 @@ export function Home() {
     <div style={styles.page}>
       <header style={styles.header}>
         <h1 style={styles.logo}>Grounded</h1>
-        <button onClick={signOut} style={styles.signOut}>Sign out</button>
+        <div style={styles.headerActions}>
+          {profile && <Link to={`/u/${profile.username}`} style={styles.signOut}>Profile</Link>}
+          <button onClick={signOut} style={styles.signOut}>Sign out</button>
+        </div>
       </header>
 
       <div style={styles.tabsWrapper} aria-hidden={showForm || undefined}>
@@ -250,11 +254,12 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 'var(--space-4) var(--space-6)',
     borderBottom: '1px solid var(--color-border)', background: '#fff',
   },
+  headerActions: { display: 'flex', gap: 'var(--space-2)', alignItems: 'center' },
   logo: { fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--color-espresso)' },
   signOut: {
     background: 'none', border: '1px solid var(--color-border)',
     borderRadius: 'var(--radius-md)', padding: 'var(--space-2) var(--space-4)',
-    color: 'var(--color-muted)', fontSize: '0.8rem',
+    color: 'var(--color-muted)', fontSize: '0.8rem', textDecoration: 'none',
   },
   tabsWrapper: {
     background: '#fff',

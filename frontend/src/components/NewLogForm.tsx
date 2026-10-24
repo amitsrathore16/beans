@@ -5,7 +5,7 @@ import { ReattributionModal } from './ReattributionModal'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const BREW_METHODS = [
+export const BREW_METHODS = [
   'Espresso', 'Pour Over', 'AeroPress', 'French Press',
   'Moka Pot', 'Cold Brew', 'Siphon', 'Stovetop',
 ]
@@ -24,7 +24,7 @@ const BREW_METHOD_EQUIPMENT: Record<string, string[]> = {
 const COFFEE_TYPES    = ['Single Origin', 'Blend']
 const SPECIES_OPTIONS = ['100% Arabica', '100% Robusta', 'Arabica-Robusta Blend', 'Other']
 const PROCESS_METHODS = ['Washed', 'Natural', 'Honey', 'Anaerobic', 'Monsooned']
-const ROAST_LEVELS    = ['Light', 'Medium', 'Medium-Dark', 'Dark']
+export const ROAST_LEVELS    = ['Light', 'Medium', 'Medium-Dark', 'Dark']
 const WOULD_RETURN    = ['Yes', 'Maybe', 'No'] as const
 
 const SENSORY_OPTIONS = {

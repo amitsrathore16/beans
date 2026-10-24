@@ -2,7 +2,7 @@
 
 A mobile-first coffee companion for tracking home brews, café tastings, and bean inventory. Log every cup, monitor bean freshness, and watch your stock update in real time as you brew.
 
-**Stack:** React 19 + Vite + TypeScript · FastAPI (Python 3.9+) · Supabase (PostgreSQL + Auth + Realtime)
+**Stack:** React 19 + Vite + TypeScript · FastAPI (Python 3.9+) · Supabase (PostgreSQL + Auth + Realtime + Storage)
 
 ---
 
@@ -11,6 +11,7 @@ A mobile-first coffee companion for tracking home brews, café tastings, and bea
 - **Home brews** — structured coffee identity (roaster, origin, species, process, roast date), brew method → equipment cascade, dose/ratio/yield with extraction indicator, SCA sensory profile; edit, delete, or "brew again" any entry
 - **Café tastings** — record café visits with ratings, sensory notes, and would-return flag
 - **Bean inventory** — track bag weight, roast date, and freshness; a matching bean's stock is deducted (with confirmation) after each brew, plus manual decrease-only adjustments and a per-bean deduction/adjustment history
+- **Profiles** — username, display name, avatar, bio, experience level, favourite methods/origins/roasts, brewing setup, social links, and brew stats; public or private, viewable at `/u/<username>`. Users without a profile (including accounts created before profiles existed) complete a one-time setup on next login
 - **Real-time sync** — inventory updates across tabs via Supabase Realtime
 
 ---
@@ -119,9 +120,9 @@ beans/
 │   └── src/
 │       ├── components/     # LogCard, BeanCard, NewLogForm, NewBeanForm, …
 │       ├── contexts/       # AuthContext
-│       ├── hooks/          # useLogs, useBeans, useBeansRealtime
+│       ├── hooks/          # useLogs, useBeans, useBeansRealtime, useProfile
 │       ├── lib/            # supabaseClient, apiClient
-│       ├── pages/          # Home, Login, Register
+│       ├── pages/          # Home, Login, Register, Profile, ProfileEdit
 │       └── utils/          # migration (localStorage → Supabase)
 ├── grounded-api/           # FastAPI backend
 │   ├── routers/            # logs.py, inventory.py

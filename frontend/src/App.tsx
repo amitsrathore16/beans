@@ -4,6 +4,8 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
 import { Home } from './pages/Home'
+import { Profile } from './pages/Profile'
+import { ProfileEdit } from './pages/ProfileEdit'
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/profile/edit" element={<ProtectedRoute><ProfileEdit /></ProtectedRoute>} />
+          <Route path="/u/:username" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

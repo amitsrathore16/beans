@@ -1,18 +1,12 @@
 import { test, expect } from '@playwright/test'
+import { registerWithProfile, PASSWORD } from './helpers'
 
 const EMAIL    = `e2e+${Date.now()}@grounded.test`
-const PASSWORD = 'TestPassword123!'
 
 test.describe('Auth flow', () => {
   test('register → home → sign out → login', async ({ page }) => {
-    // Register
-    await page.goto('/register')
-    await page.fill('input[type="email"]', EMAIL)
-    await page.fill('input[type="password"]', PASSWORD)
-    await page.click('button[type="submit"]')
-
-    // Should land on home
-    await expect(page).toHaveURL('/')
+    // Register (+ one-time profile setup) → home
+    await registerWithProfile(page, EMAIL)
     await expect(page.getByText('Home brews')).toBeVisible()
 
     // Sign out
