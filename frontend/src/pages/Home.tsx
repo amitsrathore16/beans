@@ -143,7 +143,8 @@ export function Home() {
       <header style={styles.header}>
         <h1 style={styles.logo}>Grounded</h1>
         <div style={styles.headerActions}>
-          {profile && <Link to={`/u/${profile.username}`} style={styles.signOut}>Profile</Link>}
+          {/* Always shown: with no profile (or a failed lookup) it goes to setup, so a broken profile load is visible. */}
+          <Link to={profile ? `/u/${profile.username}` : '/profile/edit'} style={styles.signOut}>Profile</Link>
           <button onClick={signOut} style={styles.signOut}>Sign out</button>
         </div>
       </header>
